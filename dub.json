@@ -1,0 +1,38 @@
+{
+	"authors": ["Shove"],
+	"name" : "ice",
+	"description" : "NAT, stun, turn and ice.",
+	"version": "1.0.0",
+	"license": "MIT License",
+	"copyright": "Copyright © 2017, Shove",
+	"dependencies" : {
+	},
+	"configurations": [
+        {
+            "name": "ice",
+            "dependencies": {
+            },
+            "targetType": "library",
+            "targetName": "ice",
+            "importPaths": [
+				"libice"
+			],
+        	"sourcePaths": [
+				"libice"
+			]
+        },
+        {
+            "name": "server",
+            "dependencies": {
+            },
+            "targetType": "executable",
+            "targetName": "ice-tracker",
+            "importPaths": [
+				"server"
+			],
+        	"sourcePaths": [
+				"server"
+			]
+        }
+    ]
+}
