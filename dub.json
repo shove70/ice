@@ -15,23 +15,24 @@
             "targetType": "library",
             "targetName": "ice",
             "importPaths": [
-				"libice"
+				"libice/src"
 			],
         	"sourcePaths": [
-				"libice"
+				"libice/src"
 			]
         },
         {
             "name": "server",
             "dependencies": {
+            	
             },
             "targetType": "executable",
             "targetName": "ice-tracker",
             "importPaths": [
-				"server"
+				"server/src"
 			],
         	"sourcePaths": [
-				"server"
+				"server/src"
 			]
         }
     ]

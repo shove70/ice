@@ -1,0 +1,5 @@
+module peer;
+
+struct Peer
+{
+}
