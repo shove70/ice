@@ -16,7 +16,7 @@ void main()
 	writeln("client.");
 	loadConfig();
 	
-	IceClient client = new IceClient(stunServerList, trackerHost, trackerPort);
+	IceClient client = new IceClient(stunServerList);
 	
 	writeln(client.NAT_Info());
 

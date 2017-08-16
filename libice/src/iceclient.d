@@ -52,8 +52,6 @@ class IceClient
 	private
 	{
 		StunServer[] stunServerList;
-		string trackerHost;
-		ushort trackerPort;
 		string[string] _NAT_Info;
 	}
 	
@@ -62,11 +60,9 @@ class IceClient
 		return this._NAT_Info;
 	}
 	
-	this(StunServer[] stunServerList, string trackerHost, ushort trackerPort)
+	this(StunServer[] stunServerList)
 	{
 		this.stunServerList = stunServerList;
-		this.trackerHost = trackerHost;
-		this.trackerPort = trackerPort;
 		
 		_NAT_Info = ["externalIp": "", "externalPort": "0", "sourceIp": "", "sourcePort": "0", "changedIp": "", "changedPort": "0", "natType": ""];
 		getNatInfo();
