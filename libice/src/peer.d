@@ -3,6 +3,9 @@ module peer;
 import std.file;
 import std.json;
 import std.conv;
+import std.array;
+import std.bitmanip;
+
 import base58;
 
 import utils, stunserver, iceclient, nattype;
@@ -45,6 +48,21 @@ class Peer
 		getPeerId();
 	}
 	
+	this(string peerId, string serializedString)
+	{
+		this.peerId = peerId;
+
+		natInfo.reset();
+		ubyte[] buffer = cast(ubyte[])Base58.decode(serializedString);
+		int offset = 0;
+		
+		natInfo.natType = cast(NATType)(buffer.peek!int(offset));
+		offset += int.sizeof;
+		natInfo.externalIp = utils.ipFromLong(buffer.peek!long(offset));
+		offset += long.sizeof;
+		natInfo.externalPort = buffer.peek!ushort(offset);
+	}
+	
 	public void getNatInfo(StunServer[] stunServerList)
 	{
 		natInfo.reset();
@@ -53,19 +71,16 @@ class Peer
 	
 	public string serialize()
 	{
+		int offset = 0;
+		ubyte[] buffer = new ubyte[int.sizeof + long.sizeof + ushort.sizeof];
 		int type = natInfo.natType;
-		JSONValue j = JSONValue( ["id": peerId, "nat": type.to!string, "ip": natInfo.externalIp, "port" : natInfo.externalPort.to!string] );
-		return j.toString();
-	}
-	
-	public void deserialize(string persistentText)
-	{
-		JSONValue j = parseJSON(persistentText);
-		natInfo.reset();
-		peerId = j["id"].str;
-		natInfo.natType = cast(NATType)(j["nat"].integer);
-		natInfo.externalIp = j["ip"].str;
-		natInfo.externalPort = cast(ushort)(j["port"].integer);
+		buffer.write!int(type, offset);
+		offset += int.sizeof;
+		buffer.write!long(utils.ipToLong(natInfo.externalIp), offset);
+		offset += long.sizeof;
+		buffer.write!ushort(natInfo.externalPort, offset);
+
+		return Base58.encode(cast(byte[])buffer);
 	}
 	
 	private string createPeerId()

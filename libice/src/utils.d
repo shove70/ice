@@ -31,7 +31,7 @@ public T[] strToByte_hex(T = byte)(string input)
 	Appender!(T[]) app;
 	for (int i; i < input.length; i += 2)
 	{
-		app ~= input[i .. i + 2].to!T(16);
+		app.put(input[i .. i + 2].to!T(16));
 	}
 	return app.data;
 }
@@ -41,7 +41,52 @@ public string byteToStr_hex(T = byte)(T[] buffer)
 	Appender!string app;
 	foreach (b; buffer)
 	{
-		app ~= rightJustify(b.to!string(16).toUpper(), 2, '0');
+		app.put(rightJustify(b.to!string(16).toUpper(), 2, '0'));
 	}
 	return app.data;
+}
+
+public long ipToLong(string ip)
+{
+	auto part = split(ip, ".");
+	assert(part.length == 4);
+	
+	long r = to!long(part[3]);
+	
+	for (int i = 2; i >= 0; i--)
+	{
+		r += to!long(part[i]) << 8 * (3 - i);
+	}
+	
+	return r;
+}
+
+public string ipFromLong(long ipInt)
+{
+	string[4] part;
+	
+	for (int i = 3; i >= 0; i--)
+	{
+		part[i] = to!string(ipInt % 256);
+		ipInt /= 256;
+	}
+	
+	return mergeString(
+		part[0].to!string, ".",
+		part[1].to!string, ".",
+		part[2].to!string, ".",
+		part[3].to!string
+	);
+}
+
+public string mergeString(Params...)(Params params)
+{
+	Appender!string ret;
+	
+	foreach(str; params)
+	{
+		ret.put(str);
+	}
+	
+	return ret.data;
 }

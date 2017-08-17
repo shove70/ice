@@ -21,6 +21,12 @@ void main()
 	
 	writeln("peer id: ", self.peerId);
 	writeln(self.natInfo);
+	
+	string a = self.serialize();
+	writeln(a);
+	
+	Peer p2 = new Peer("test_id", a);
+	writeln(p2.natInfo);
 }
 
 private void loadConfig()
