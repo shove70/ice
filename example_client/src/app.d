@@ -16,10 +16,11 @@ void main()
 	writeln("client.");
 	loadConfig();
 	
-	IceClient client = new IceClient(stunServerList);
+	Peer self = new Peer();
+	self.getNatInfo(stunServerList);
 	
-	writeln(client.NAT_Info());
-
+	writeln("peer id: ", self.peerId);
+	writeln(self.natInfo);
 }
 
 private void loadConfig()

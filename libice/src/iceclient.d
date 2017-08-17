@@ -1,15 +1,13 @@
 module iceclient;
 
-import std.random;
 import std.socket;
-import std.uuid;
 import std.conv;
 import std.string;
 import std.experimental.logger.core;
 import std.datetime;
 import std.array;
 
-import stunserver, peer;
+import stunserver, peer, utils;
 
 class IceClient
 {
@@ -51,49 +49,16 @@ class IceClient
 	
 	private
 	{
-		StunServer[] stunServerList;
-		string[string] _NAT_Info;
+		StunServer[] _stunServerList;
+		Peer.NATInfo* _natInfo;
 	}
 	
-	@property public string[string] NAT_Info()
+	this(StunServer[] stunServerList, Peer.NATInfo* natInfo)
 	{
-		return this._NAT_Info;
-	}
-	
-	this(StunServer[] stunServerList)
-	{
-		this.stunServerList = stunServerList;
+		this._stunServerList = stunServerList;
+		this._natInfo = natInfo;
 		
-		_NAT_Info = ["externalIp": "", "externalPort": "0", "sourceIp": "", "sourcePort": "0", "changedIp": "", "changedPort": "0", "natType": ""];
 		getNatInfo();
-	}
-	
-	private string genUuid()	// RFC3489 128bits transaction ID
-	{
-		Xorshift192 gen;
-		gen.seed(unpredictableSeed);
-		auto uuid = randomUUID(gen);
-		return uuid.toString.replace("-", "").toUpper();
-	}
-	
-	private ubyte[] strToByte_hex(string input)
-	{
-		Appender!(ubyte[]) app;
-		for (int i; i < input.length; i += 2)
-		{
-			app ~= input[i .. i + 2].to!ubyte(16);
-		}
-		return app.data;
-	}
-	
-	private string byteToStr_hex(byte[] buffer)
-	{
-		Appender!string app;
-		foreach (b; buffer)
-		{
-			app ~= rightJustify(b.to!string(16).toUpper(), 2, '0');
-		}
-		return app.data;
 	}
 	
 	private bool stunTest(Socket sock, string host, ushort port, string sourceIp, ushort sourcePort, string sendData = string.init)
@@ -102,7 +67,7 @@ class IceClient
 		string dataLength = rightJustify((cast(int)(sendData.length / 2)).to!string, 4, '0');
 		string tranId = genUuid();
 		string str_data = join([BindRequestMsg, dataLength, tranId, sendData]);
-		ubyte[] data = strToByte_hex(str_data);
+		ubyte[] data = utils.strToByte_hex(str_data);
 		
 		bool recvCorr = false;
 		while (!recvCorr)
@@ -150,43 +115,43 @@ class IceClient
 				}
 	        }
 
-	        string msgType = byteToStr_hex(buffer[0 .. 2]);
-	        if ((msgType == BindResponseMsg) && (tranId == byteToStr_hex(buffer[4 .. 20])))
+	        string msgType = utils.byteToStr_hex(buffer[0 .. 2]);
+	        if ((msgType == BindResponseMsg) && (tranId == utils.byteToStr_hex(buffer[4 .. 20])))
 	        {
 	        	recvCorr = true;
-	        	int len_message = byteToStr_hex(buffer[2 .. 4]).to!int(16);
+	        	int len_message = utils.byteToStr_hex(buffer[2 .. 4]).to!int(16);
 	            int len_remain = len_message;
 	            int base = 20;
 				while (len_remain)
 				{
-					string attr_type = byteToStr_hex(buffer[base .. base + 2]);
-					int attr_len = byteToStr_hex(buffer[base + 2 .. base + 4]).to!int(16);
+					string attr_type = utils.byteToStr_hex(buffer[base .. base + 2]);
+					int attr_len = utils.byteToStr_hex(buffer[base + 2 .. base + 4]).to!int(16);
 					if (attr_type == MappedAddress)
 					{
-						_NAT_Info["externalPort"] = byteToStr_hex(buffer[base + 6 .. base + 8]).to!ushort(16).to!string;
-						_NAT_Info["externalIp"] = join([
-										byteToStr_hex(buffer[base +  8 .. base +  9]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base +  9 .. base + 10]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base + 10 .. base + 11]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base + 11 .. base + 12]).to!int(16).to!string]);
+						_natInfo.externalPort = utils.byteToStr_hex(buffer[base + 6 .. base + 8]).to!ushort(16);
+						_natInfo.externalIp = join([
+										utils.byteToStr_hex(buffer[base +  8 .. base +  9]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base +  9 .. base + 10]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base + 10 .. base + 11]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base + 11 .. base + 12]).to!int(16).to!string]);
 					}
 					else if (attr_type == SourceAddress)
 					{
-						_NAT_Info["sourcePort"] = byteToStr_hex(buffer[base + 6 .. base + 8]).to!ushort(16).to!string;
-						_NAT_Info["sourceIp"] = join([
-										byteToStr_hex(buffer[base +  8 .. base +  9]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base +  9 .. base + 10]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base + 10 .. base + 11]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base + 11 .. base + 12]).to!int(16).to!string]);
+						_natInfo.sourcePort = utils.byteToStr_hex(buffer[base + 6 .. base + 8]).to!ushort(16);
+						_natInfo.sourceIp = join([
+										utils.byteToStr_hex(buffer[base +  8 .. base +  9]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base +  9 .. base + 10]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base + 10 .. base + 11]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base + 11 .. base + 12]).to!int(16).to!string]);
 					}
 					else if (attr_type == ChangedAddress)
 					{
-						_NAT_Info["changedPort"] = byteToStr_hex(buffer[base + 6 .. base + 8]).to!ushort(16).to!string;
-						_NAT_Info["changedIp"] = join([
-										byteToStr_hex(buffer[base +  8 .. base +  9]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base +  9 .. base + 10]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base + 10 .. base + 11]).to!int(16).to!string, ".",
-										byteToStr_hex(buffer[base + 11 .. base + 12]).to!int(16).to!string]);
+						_natInfo.changedPort = byteToStr_hex(buffer[base + 6 .. base + 8]).to!ushort(16);
+						_natInfo.changedIp = join([
+										utils.byteToStr_hex(buffer[base +  8 .. base +  9]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base +  9 .. base + 10]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base + 10 .. base + 11]).to!int(16).to!string, ".",
+										utils.byteToStr_hex(buffer[base + 11 .. base + 12]).to!int(16).to!string]);
 					}
 					base = base + 4 + attr_len;
 	                len_remain = len_remain - (4 + attr_len);
@@ -213,7 +178,7 @@ class IceClient
 		string stunServer;
 		ushort stunPort;
 		bool testOK = false;
-		foreach(StunServer server; stunServerList)
+		foreach(StunServer server; _stunServerList)
 		{
 			stunServer = server.host;
 			stunPort = server.port;
@@ -227,27 +192,27 @@ class IceClient
 
 		if (!testOK)
 		{
-			_NAT_Info["natType"] = Blocked;
+			_natInfo.natType = Blocked;
 			sock.close();
 			
 			return;
 		}
 
-		string externalIp = _NAT_Info["externalIp"];
-		ushort externalPort = _NAT_Info["externalPort"].to!ushort;
-		string changedIp = _NAT_Info["changedIp"];
-		ushort changedPort = _NAT_Info["changedPort"].to!ushort;
+		string externalIp = _natInfo.externalIp;
+		ushort externalPort = _natInfo.externalPort;
+		string changedIp = _natInfo.changedIp;
+		ushort changedPort = _natInfo.changedPort;
 		string sendData;
-		if (_NAT_Info["externalIp"] == sourceIp)
+		if (_natInfo.externalIp == sourceIp)
 		{
 			sendData = join([ChangeRequest, "0004", "00000006"]);
 			if (stunTest(sock, stunServer, stunPort, sourceIp, sourcePort, sendData))
 			{
-				_NAT_Info["natType"] = OpenInternet;
+				_natInfo.natType = OpenInternet;
 			}
 			else
 			{
-				_NAT_Info["natType"] = SymmetricUDPFirewall;
+				_natInfo.natType = SymmetricUDPFirewall;
 			}
 		}
 		else
@@ -255,31 +220,31 @@ class IceClient
 			sendData = join([ChangeRequest, "0004", "00000006"]);
 			if (stunTest(sock, stunServer, stunPort, sourceIp, sourcePort, sendData))
 			{
-				_NAT_Info["natType"] = FullCone;
+				_natInfo.natType = FullCone;
 			}
 			else
 			{
 				if (!stunTest(sock, changedIp, changedPort, sourceIp, sourcePort))
 				{
-					_NAT_Info["natType"] = ChangedAddressError;
+					_natInfo.natType = ChangedAddressError;
 				}
 				else
 				{
-					if ((externalIp == _NAT_Info["externalIp"]) && (externalPort == _NAT_Info["externalPort"].to!ushort))
+					if ((externalIp == _natInfo.externalIp) && (externalPort == _natInfo.externalPort))
 					{
 						sendData = join([ChangeRequest, "0004", "00000002"]);
 						if (stunTest(sock, changedIp, stunPort, sourceIp, sourcePort, sendData))
 						{
-							_NAT_Info["natType"] = RestrictNAT;
+							_natInfo.natType = RestrictNAT;
 						}
 						else
 						{
-							_NAT_Info["natType"] = RestrictPortNAT;
+							_natInfo.natType = RestrictPortNAT;
 						}
 					}
 					else
 					{
-						_NAT_Info["natType"] = SymmetricNAT;
+						_natInfo.natType = SymmetricNAT;
 					}
 				}
 			}

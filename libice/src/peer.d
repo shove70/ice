@@ -1,5 +1,97 @@
 module peer;
 
-struct Peer
+import std.file;
+
+import utils, stunserver, iceclient;
+
+class Peer
 {
-}
+	struct NATInfo
+	{
+		string natType;
+		
+		string externalIp;
+		ushort externalPort = 0;
+		string sourceIp;
+		ushort sourcePort = 0;
+		string changedIp;
+		ushort changedPort = 0;
+
+		void reset()
+		{
+			natType = string.init;
+			
+			externalIp = string.init;
+			externalPort = 0;
+			sourceIp = string.init;
+			sourcePort = 0;
+			changedIp = string.init;
+			changedPort = 0;
+		}
+	}
+
+	public string peerId;
+	public NATInfo natInfo;
+
+	this()
+	{
+		getPeerId();
+	}
+	
+	public void getNatInfo(StunServer[] stunServerList)
+	{
+		natInfo.reset();
+		IceClient client = new IceClient(stunServerList, &natInfo);
+	}
+	
+	private string createPeerId()
+	{
+		string uuid = utils.genUuid();
+		return uuid ~ utils.MD5(uuid)[0 .. 8];
+	}
+	
+	private bool verifyPeerId(string input)
+	{
+		if (input.length != 40)
+		{
+			return false;
+		}
+		
+		return (utils.MD5(input[0 .. 32])[0 .. 8] == input[32 .. 40]);
+	}
+
+	private void getPeerId()
+	{
+		string path = "./.caches";
+		string fileName = "./.caches/.peerid";
+		
+		string _peerId;
+		
+		if (!std.file.exists(path))
+		{
+			try
+			{
+				std.file.mkdirRecurse(path);
+			}
+			catch (Exception e) { }
+		}
+		
+		if (std.file.exists(fileName))
+		{
+			_peerId = std.file.readText(fileName);
+		}
+		
+		if (!verifyPeerId(_peerId))
+		{
+			_peerId = createPeerId();
+			
+			try
+			{
+				std.file.write(fileName, _peerId);
+			}
+			catch (Exception e) { }
+		}
+		
+		peerId = _peerId;
+	}
+}	

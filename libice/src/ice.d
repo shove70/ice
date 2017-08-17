@@ -1,3 +1,3 @@
 module ice;
 
-public import iceclient, peer, stunserver;
+public import peer, stunserver;
