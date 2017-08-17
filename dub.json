@@ -11,6 +11,7 @@
         {
             "name": "ice",
             "dependencies": {
+            	"cryption": "~>0.0.1"
             },
             "targetType": "library",
             "targetName": "ice",

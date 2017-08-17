@@ -3,6 +3,7 @@ module peer;
 import std.file;
 import std.json;
 import std.conv;
+import base58;
 
 import utils, stunserver, iceclient, nattype;
 
@@ -70,11 +71,21 @@ class Peer
 	private string createPeerId()
 	{
 		string uuid = utils.genUuid();
-		return uuid ~ utils.MD5(uuid)[0 .. 8];
+		return Base58.encode(utils.strToByte_hex(uuid ~ utils.MD5(uuid)[0 .. 8]));
 	}
 	
 	private bool verifyPeerId(string input)
 	{
+		try
+		{
+			byte[] buffer = Base58.decode(input);
+			input = utils.byteToStr_hex(buffer);
+		}
+		catch (Exception e)
+		{
+			return false;
+		}
+		
 		if (input.length != 40)
 		{
 			return false;

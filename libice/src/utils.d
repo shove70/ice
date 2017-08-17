@@ -16,7 +16,7 @@ public string genUuid()	// RFC3489 128bits transaction ID
 	return uuid.toString.replace("-", "").toUpper();
 }
 
-string MD5(string T = "string")(string src)
+public string MD5(string T = "string")(string src)
 {
 	assert(T == "string" || T == "file");
 	
@@ -26,17 +26,17 @@ string MD5(string T = "string")(string src)
     return toHexString(hash).toUpper();
 }
 
-public ubyte[] strToByte_hex(string input)
+public T[] strToByte_hex(T = byte)(string input)
 {
-	Appender!(ubyte[]) app;
+	Appender!(T[]) app;
 	for (int i; i < input.length; i += 2)
 	{
-		app ~= input[i .. i + 2].to!ubyte(16);
+		app ~= input[i .. i + 2].to!T(16);
 	}
 	return app.data;
 }
 
-public string byteToStr_hex(byte[] buffer)
+public string byteToStr_hex(T = byte)(T[] buffer)
 {
 	Appender!string app;
 	foreach (b; buffer)
