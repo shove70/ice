@@ -1,14 +1,16 @@
 module peer;
 
 import std.file;
+import std.json;
+import std.conv;
 
-import utils, stunserver, iceclient;
+import utils, stunserver, iceclient, nattype;
 
 class Peer
 {
 	struct NATInfo
 	{
-		string natType;
+		NATType natType = NATType.Uninit;
 		
 		string externalIp;
 		ushort externalPort = 0;
@@ -19,7 +21,7 @@ class Peer
 
 		void reset()
 		{
-			natType = string.init;
+			natType = NATType.Uninit;
 			
 			externalIp = string.init;
 			externalPort = 0;
@@ -42,6 +44,23 @@ class Peer
 	{
 		natInfo.reset();
 		IceClient client = new IceClient(stunServerList, &natInfo);
+	}
+	
+	public string serialize()
+	{
+		int type = natInfo.natType;
+		JSONValue j = JSONValue( ["id": peerId, "type": type.to!string, "ip": natInfo.externalIp, "port" : natInfo.externalPort.to!string] );
+		return j.toString();
+	}
+	
+	public void deserialize(string persistentText)
+	{
+		JSONValue j = parseJSON(persistentText);
+		natInfo.reset();
+		peerId = j["id"].str;
+		natInfo.natType = cast(NATType)(j["type"].str.to!int);
+		natInfo.externalIp = j["ip"].str;
+		natInfo.externalPort = j["port"].str.to!ushort;
 	}
 	
 	private string createPeerId()
@@ -94,4 +113,4 @@ class Peer
 		
 		peerId = _peerId;
 	}
-}	
+}

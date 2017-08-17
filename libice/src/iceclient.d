@@ -7,7 +7,7 @@ import std.experimental.logger.core;
 import std.datetime;
 import std.array;
 
-import stunserver, peer, utils;
+import stunserver, peer, utils, nattype;
 
 class IceClient
 {
@@ -36,15 +36,6 @@ class IceClient
 		string SharedSecretRequestMsg		= "0002";
 		string SharedSecretResponseMsg		= "0102";
 		string SharedSecretErrorResponseMsg = "0112";
-		
-		string Blocked						= "Blocked";
-		string OpenInternet					= "Open Internet";
-		string FullCone						= "Full Cone";
-		string SymmetricUDPFirewall			= "Symmetric UDP Firewall";
-		string RestrictNAT					= "Restrict NAT";
-		string RestrictPortNAT				= "Restrict Port NAT";
-		string SymmetricNAT					= "Symmetric NAT";
-		string ChangedAddressError			= "Meet an error, when do Test1 on Changed IP and Port";
 	}
 	
 	private
@@ -192,7 +183,7 @@ class IceClient
 
 		if (!testOK)
 		{
-			_natInfo.natType = Blocked;
+			_natInfo.natType = NATType.Blocked;
 			sock.close();
 			
 			return;
@@ -208,11 +199,11 @@ class IceClient
 			sendData = join([ChangeRequest, "0004", "00000006"]);
 			if (stunTest(sock, stunServer, stunPort, sourceIp, sourcePort, sendData))
 			{
-				_natInfo.natType = OpenInternet;
+				_natInfo.natType = NATType.OpenInternet;
 			}
 			else
 			{
-				_natInfo.natType = SymmetricUDPFirewall;
+				_natInfo.natType = NATType.SymmetricUDPFirewall;
 			}
 		}
 		else
@@ -220,13 +211,13 @@ class IceClient
 			sendData = join([ChangeRequest, "0004", "00000006"]);
 			if (stunTest(sock, stunServer, stunPort, sourceIp, sourcePort, sendData))
 			{
-				_natInfo.natType = FullCone;
+				_natInfo.natType = NATType.FullCone;
 			}
 			else
 			{
 				if (!stunTest(sock, changedIp, changedPort, sourceIp, sourcePort))
 				{
-					_natInfo.natType = ChangedAddressError;
+					_natInfo.natType = NATType.ChangedAddressError;
 				}
 				else
 				{
@@ -235,16 +226,16 @@ class IceClient
 						sendData = join([ChangeRequest, "0004", "00000002"]);
 						if (stunTest(sock, changedIp, stunPort, sourceIp, sourcePort, sendData))
 						{
-							_natInfo.natType = RestrictNAT;
+							_natInfo.natType = NATType.RestrictNAT;
 						}
 						else
 						{
-							_natInfo.natType = RestrictPortNAT;
+							_natInfo.natType = NATType.RestrictPortNAT;
 						}
 					}
 					else
 					{
-						_natInfo.natType = SymmetricNAT;
+						_natInfo.natType = NATType.SymmetricNAT;
 					}
 				}
 			}

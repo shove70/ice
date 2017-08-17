@@ -1,3 +1,3 @@
 module ice;
 
-public import peer, stunserver;
+public import peer, stunserver, nattype;
