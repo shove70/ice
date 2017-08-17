@@ -165,6 +165,9 @@ class IceClient
 		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, dur!"seconds"(2));
 		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, dur!"seconds"(2));
 		sock.bind(new InternetAddress(sourceIp, sourcePort));
+		
+		_natInfo.localIp = sock.localAddress().toAddrString();
+		_natInfo.localPort = sock.localAddress().toPortString().to!ushort;
 
 		string stunServer;
 		ushort stunPort;

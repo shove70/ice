@@ -18,6 +18,8 @@ class Peer
 		ushort sourcePort = 0;
 		string changedIp;
 		ushort changedPort = 0;
+		string localIp;
+		ushort localPort = 0;
 
 		void reset()
 		{
@@ -29,6 +31,8 @@ class Peer
 			sourcePort = 0;
 			changedIp = string.init;
 			changedPort = 0;
+			localIp = "0.0.0.0";
+			localPort = 0;
 		}
 	}
 
@@ -49,7 +53,7 @@ class Peer
 	public string serialize()
 	{
 		int type = natInfo.natType;
-		JSONValue j = JSONValue( ["id": peerId, "type": type.to!string, "ip": natInfo.externalIp, "port" : natInfo.externalPort.to!string] );
+		JSONValue j = JSONValue( ["id": peerId, "nat": type.to!string, "ip": natInfo.externalIp, "port" : natInfo.externalPort.to!string] );
 		return j.toString();
 	}
 	
@@ -58,9 +62,9 @@ class Peer
 		JSONValue j = parseJSON(persistentText);
 		natInfo.reset();
 		peerId = j["id"].str;
-		natInfo.natType = cast(NATType)(j["type"].str.to!int);
+		natInfo.natType = cast(NATType)(j["nat"].integer);
 		natInfo.externalIp = j["ip"].str;
-		natInfo.externalPort = j["port"].str.to!ushort;
+		natInfo.externalPort = cast(ushort)(j["port"].integer);
 	}
 	
 	private string createPeerId()
