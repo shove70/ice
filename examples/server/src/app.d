@@ -82,7 +82,7 @@ private ubyte[] doBusinessHandle(ubyte[] buffer)
 		return null;
 	}
 	
-	writefln("Received, cmd:%s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, packet.content);
+	writefln("Received, cmd:%d, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, packet.content);
 	
 	switch (packet.cmd)
 	{
