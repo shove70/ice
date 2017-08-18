@@ -2,15 +2,15 @@
 	"authors": [
 		"Shove"
 	],
-	"name": "ice_example_client",
+	"name": "client",
 	"targetType": "executable",
 	"license": "MIT License",
 	"copyright": "Copyright © 2017, Shove",
-	"targetName": "ice_example_client",
+	"targetName": "client",
 	"description": "a example client for NAT, stun, turn and ice.",
 	"dependencies" : {
 		"ice": {
-			"path": "../"
+			"path": "../../"
 		}
 	}
 }

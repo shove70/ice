@@ -5,36 +5,15 @@
 	"version": "0.0.1",
 	"license": "MIT License",
 	"copyright": "Copyright © 2017, Shove",
+	"targetType": "library",
+	"targetName": "ice",
+	"importPaths": [
+		"libice/src"
+	],
+    "sourcePaths": [
+		"libice/src"
+	],
 	"dependencies" : {
-	},
-	"configurations": [
-        {
-            "name": "ice",
-            "dependencies": {
-            	"cryption": "~>0.0.1"
-            },
-            "targetType": "library",
-            "targetName": "ice",
-            "importPaths": [
-				"libice/src"
-			],
-        	"sourcePaths": [
-				"libice/src"
-			]
-        },
-        {
-            "name": "server",
-            "dependencies": {
-            	"libasync": "~>0.8.3"
-            },
-            "targetType": "executable",
-            "targetName": "ice-tracker",
-            "importPaths": [
-				"server/src"
-			],
-        	"sourcePaths": [
-				"server/src"
-			]
-        }
-    ]
+		"cryption": "~>0.0.1"
+	}
 }

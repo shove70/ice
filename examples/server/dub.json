@@ -1,0 +1,16 @@
+{
+	"authors": [
+		"Shove"
+	],
+	"name": "server",
+	"targetType": "executable",
+	"license": "MIT License",
+	"copyright": "Copyright © 2017, Shove",
+	"targetName": "tracker",
+	"description": "a example server of tarcker for NAT, stun, turn and ice.",
+	"dependencies" : {
+		"ice": {
+			"path": "../../"
+		}
+	}
+}
