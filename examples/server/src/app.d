@@ -10,10 +10,14 @@ import std.socket;
 import std.bitmanip;
 import std.typecons;
 
+import ice;
+
 import msgprotocol;
 
 string host;
 ushort port;
+
+__gshared string[string] peers;
 
 void main()
 {
@@ -78,14 +82,36 @@ private ubyte[] doBusinessHandle(ubyte[] buffer)
 		return null;
 	}
 	
+	writefln("Received, cmd:%s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, packet.content);
+	
 	switch (packet.cmd)
 	{
 		case 1:
-			
-			break;
+			peers[packet.fromPeerId] = packet.content;
+			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, string.init);
+		case 2:
+			string response;
+			foreach(k, v; peers)
+			{
+				response ~= (k ~ "," ~ v ~ ";");
+			}
+			if (response == string.init) response = ";";
+			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, response[0..$ - 1]);
+		case 3:
+			if (packet.toPeerId !in peers)
+			{
+				return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, "peer not found.");
+			}
+			Peer peer = new Peer(packet.toPeerId, peers[packet.toPeerId]);
+			UdpSocket sock = new UdpSocket();
+			sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, dur!"seconds"(5));
+			sock.bind(new InternetAddress("0.0.0.0", 0));
+			sock.sendTo(buffer, new InternetAddress(peer.natInfo.externalIp, peer.natInfo.externalPort));
+			sock.close();
+			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, string.init);
+		default:
+			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, string.init);
 	}
-	
-	return null;
 }
 
 private void loadConfig()

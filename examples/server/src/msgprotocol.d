@@ -17,7 +17,7 @@ protocol rule:
 	02: request all peers info from server.
 	03: say to send (forward)
 	(2) Peer to peer
-	10: say to send
+	03: say to send
 */
 
 struct Packet
