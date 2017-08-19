@@ -10,7 +10,7 @@
 	"description": "a example server of tarcker for NAT, stun, turn and ice.",
 	"dependencies" : {
 		"ice": {
-			"path": "../../"
+			"path": "../"
 		}
 	}
 }
