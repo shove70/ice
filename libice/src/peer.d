@@ -51,16 +51,7 @@ class Peer
 	this(string peerId, string serializedString)
 	{
 		this.peerId = peerId;
-
-		natInfo.reset();
-		ubyte[] buffer = cast(ubyte[])Base58.decode(serializedString);
-		int offset = 0;
-		
-		natInfo.natType = cast(NATType)(buffer.peek!int(offset));
-		offset += int.sizeof;
-		natInfo.externalIp = utils.ipFromLong(buffer.peek!long(offset));
-		offset += long.sizeof;
-		natInfo.externalPort = buffer.peek!ushort(offset);
+		deserialize(serializedString);
 	}
 	
 	public void getNatInfo(StunServer[] stunServerList)
@@ -81,6 +72,19 @@ class Peer
 		buffer.write!ushort(natInfo.externalPort, offset);
 
 		return Base58.encode(cast(byte[])buffer);
+	}
+	
+	void deserialize(string serializedString)
+	{
+		natInfo.reset();
+		ubyte[] buffer = cast(ubyte[])Base58.decode(serializedString);
+		int offset = 0;
+		
+		natInfo.natType = cast(NATType)(buffer.peek!int(offset));
+		offset += int.sizeof;
+		natInfo.externalIp = utils.ipFromLong(buffer.peek!long(offset));
+		offset += long.sizeof;
+		natInfo.externalPort = buffer.peek!ushort(offset);
 	}
 	
 	private string createPeerId()

@@ -138,6 +138,11 @@ void getAllPeers()
 		if (tp.length != 2) continue;
 		
 		peers[tp[0]] = tp[1];
+		
+		if (tp[0] != self.peerId)
+		{
+			consultMakeHole(tp[0], tp[1]);
+		}
 	}
 }
 
@@ -182,6 +187,17 @@ void say(string sayString)
 	//writeln("ok, sent to all peers success.");
 }
 
+private void consultMakeHole(string peerId, string peerSerializedString)
+{
+	Peer peer = new Peer(peerId, peerSerializedString);
+	UdpSocket sock = createToPeerConnection();
+	ubyte[] buffer = MsgProtocol.build(4, self.peerId, peer.peerId, string.init);
+	sock.sendTo(buffer, new InternetAddress(peer.natInfo.externalIp, peer.natInfo.externalPort));
+	//sock.sendTo(buffer, new InternetAddress(self.natInfo.localIp, self.natInfo.localPort));
+	sock.close();
+	sock = null;
+}
+
 private TcpSocket createServerConnection()
 {
 	TcpSocket sock = new TcpSocket();
@@ -194,8 +210,9 @@ private TcpSocket createServerConnection()
 private UdpSocket createToPeerConnection()
 {
 	UdpSocket sock = new UdpSocket();
+	sock.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 	sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, dur!"seconds"(5));
-	sock.bind(new InternetAddress("0.0.0.0", 0));
+	sock.bind(new InternetAddress(self.natInfo.localIp, self.natInfo.localPort));//"0.0.0.0", 0));
 	
 	return sock;
 }
@@ -225,6 +242,7 @@ private ubyte[] receive(Socket sock)
 void chatListener()
 {
 	auto listener = new UdpSocket();
+	listener.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
     listener.bind(new InternetAddress(self.natInfo.localIp, self.natInfo.localPort));
     
     while (true)

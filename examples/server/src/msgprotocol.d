@@ -18,6 +18,7 @@ protocol rule:
 	03: say to send (forward)
 	(2) Peer to peer
 	03: say to send
+	10: consult nat, make a hole
 */
 
 struct Packet
