@@ -70,7 +70,7 @@ void handler(shared Socket socket)
 	buffer = doBusinessHandle(buffer);
 	
 	if (buffer !is null) sock.send(buffer);
-    sock.close();
+    //sock.close();
 }
 
 private ubyte[] doBusinessHandle(ubyte[] buffer)
@@ -93,7 +93,8 @@ private ubyte[] doBusinessHandle(ubyte[] buffer)
 			string response;
 			foreach(k, v; peers)
 			{
-				response ~= (k ~ "," ~ v ~ ";");
+				//if (k == packet.fromPeerId) continue;
+				response ~= (k ~ "|" ~ v ~ ";");
 			}
 			if (response == string.init) response = ";";
 			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, response[0..$ - 1]);

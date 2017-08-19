@@ -55,7 +55,7 @@ class MsgProtocol
 	{
 		string data = cast(string)buffer;
 		string[] strs = data.split(",");
-		
+
 		if (strs.length != 4)
 		{
 			return Nullable!Packet();
