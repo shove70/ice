@@ -58,7 +58,7 @@ class IceClient
 		string dataLength = rightJustify((cast(int)(sendData.length / 2)).to!string, 4, '0');
 		string tranId = genUuid();
 		string str_data = join([BindRequestMsg, dataLength, tranId, sendData]);
-		ubyte[] data = utils.strToByte_hex!ubyte(str_data);
+		ubyte[] data = utils.strToByte_hex(str_data);
 		
 		bool recvCorr = false;
 		while (!recvCorr)

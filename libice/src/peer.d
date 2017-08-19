@@ -86,7 +86,8 @@ class Peer
 	private string createPeerId()
 	{
 		string uuid = utils.genUuid();
-		return Base58.encode(utils.strToByte_hex(uuid ~ utils.MD5(uuid)[0 .. 8]));
+
+		return Base58.encode(cast(byte[])utils.strToByte_hex(uuid ~ utils.MD5(uuid)[0 .. 8]));
 	}
 	
 	private bool verifyPeerId(string input)

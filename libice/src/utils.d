@@ -26,13 +26,14 @@ public string MD5(string T = "string")(string src)
     return toHexString(hash).toUpper();
 }
 
-public T[] strToByte_hex(T = byte)(string input)
+public ubyte[] strToByte_hex(string input)
 {
-	Appender!(T[]) app;
+	Appender!(ubyte[]) app;
 	for (int i; i < input.length; i += 2)
 	{
-		app.put(input[i .. i + 2].to!T(16));
+		app.put(input[i .. i + 2].to!ubyte(16));
 	}
+	
 	return app.data;
 }
 
