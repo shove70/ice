@@ -19,6 +19,7 @@ void main()
 			onReceive(fromPeerId, toPeerId, data);
 		}
 	);
+	self.getAllPeers();
 	self.connectPeers();
 	
 	showMenu();
@@ -50,6 +51,8 @@ void main()
 	    }
 		
 		self.broadcastMessage(cast(ubyte[])line);
+		writefln("Self sent to all: %s", line);
+		write("Please input: ");
 	}
 }
 
@@ -70,5 +73,5 @@ void showMenu()
 
 void onReceive(string fromPeerId, string toPeerId, ubyte[] data)
 {
-	writefln("%s to %s: %s", fromPeerId, toPeerId, cast(string)data);
+	writefln("%s sent to %s: %s", fromPeerId, toPeerId, cast(string)data);
 }

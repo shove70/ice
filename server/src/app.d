@@ -53,14 +53,14 @@ void listener()
 		{
 			continue;
 		}
-		
+		writeln(packet.cmd);
 		handler(packet, address);
     }
 }
 
 private void handler(Packet packet, Address address)
 {
-	writefln("Received, cmd:%d, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, packet.data);
+	//writefln("Received, cmd:%s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, cast(string)packet.data);
 	
 	final switch (packet.cmd)
 	{

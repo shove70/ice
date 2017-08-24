@@ -36,13 +36,16 @@ struct Packet
 		ubyte[] from_buf = cast(ubyte[])fromPeerId;
 		ubyte[] to_buf = cast(ubyte[])toPeerId;
 		ubyte[] data_buf = cast(ubyte[])data;
-		ulong total_len = from_buf.length + to_buf.length + data_buf.length + 5;
+		ulong total_len = from_buf.length + to_buf.length + data_buf.length + 6;
 		
 		assert(total_len <= 65503);
 		
 		ubyte[] buffer = new ubyte[4];
 		buffer.write!ushort(magicNumber, 0);
 		buffer.write!ushort(cast(ushort)total_len, 2);
+		
+		int icmd = cmd;
+		buffer ~= cast(ubyte)icmd;
 		
 		buffer ~= cast(ubyte)(from_buf.length);
 		buffer ~= from_buf;
@@ -51,10 +54,10 @@ struct Packet
 		buffer ~= cast(ubyte)(data_buf.length);
 		buffer ~= data_buf;
 		buffer ~= strToByte_hex(MD5(buffer)[0..4]);
-		
+
 		return buffer;
 	}
-	
+
 	static Nullable!Packet parse(ushort magicNumber, ubyte[] buffer)
 	{
 		assert(buffer.length >= 10);
@@ -62,18 +65,20 @@ struct Packet
 		ushort t_magic, t_len, t_crc;
 		t_magic = buffer.peek!ushort(0);
 		t_len = buffer.peek!ushort(2);
-		t_crc = buffer.peek!ushort(buffer.length - 2);
 		
-		if ((t_magic != magicNumber) || (t_len != buffer.length - 4))
+		if ((t_magic != magicNumber) || (t_len > buffer.length - 4))
 		{
 			return Nullable!Packet();
 		}
+		
+		buffer = buffer[0..t_len + 4];
+		t_crc = buffer.peek!ushort(buffer.length - 2);
 		
 		if (strToByte_hex(MD5(buffer[0..$ - 2])[0..4]) != buffer[$ - 2..$])
 		{
 			return Nullable!Packet();
 		}
-		
+
 		buffer = buffer[4..$ - 2];
 		Packet packet;
 		
@@ -90,7 +95,7 @@ struct Packet
 		
 		t_len = buffer[0];
 		packet.data = buffer[1..$];
-		
+
 		return Nullable!Packet(packet);
 	}
 }

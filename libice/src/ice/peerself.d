@@ -48,6 +48,8 @@ void listener(shared PeerSelf _self, postMessageCallback _dg)
 			continue;
 		}
 		
+		//writefln("Received, cmd:%s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, cast(string)packet.data);
+		
 		handler(self, dg, packet);
     }
 }
@@ -120,7 +122,6 @@ final class PeerSelf : Peer
 		}
 		
 		reportPeerInfoToServer();
-		getAllPeers();
 	}
 	
 	private string createPeerId()
@@ -192,8 +193,10 @@ final class PeerSelf : Peer
 			return;
 		}
 		
+		Address address = new InternetAddress(trackerHost, trackerPort);
+		
 		ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, peerId, string.init, cast(ubyte[])serialize);
-		socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
+		socket.sendTo(buffer, address);
 		writeln("Reported peer self's info to server.");
 	}
 	
