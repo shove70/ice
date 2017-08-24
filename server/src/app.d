@@ -10,108 +10,94 @@ import std.socket;
 import std.bitmanip;
 import std.typecons;
 
-import ice;
-
-import msgprotocol;
+import ice.all;
 
 string host;
 ushort port;
+__gshared ushort magicNumber;
 
-__gshared string[string] peers;
+__gshared PeerOther[string] peers;
+__gshared UdpSocket socket;
 
 void main()
 {
     writeln("ice server.");
     loadConfig();
 
-	start();
+	startListen();
 }
 
-void start()
+void startListen()
 {
-	auto listener = new TcpSocket();
-    listener.bind(new InternetAddress(host, port));
-    listener.listen(10);
+	socket = new UdpSocket();
+	socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
+	socket.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, dur!"seconds"(5));
+	socket.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, dur!"seconds"(5));
+	socket.bind(new InternetAddress(host, port));
+    
     writefln("Listening on port %d.", port);
+	spawn!()(&listener);
+}
 
+void listener()
+{
     while (true)
     {
-        Socket sock = listener.accept();
-        spawn!()(&handler, cast(shared Socket)sock);
+    	Address address = new InternetAddress(InternetAddress.ADDR_ANY, InternetAddress.PORT_ANY);
+    	
+	    ubyte[] buffer = new ubyte[65507];
+    	socket.receiveFrom(buffer, address);	    	
+    	Nullable!Packet packet = Packet.parse(magicNumber, buffer);
+	
+		if (packet.isNull)
+		{
+			continue;
+		}
+		
+		handler(packet, address);
     }
 }
 
-void handler(shared Socket socket)
+private void handler(Packet packet, Address address)
 {
-	Socket sock = cast(Socket)socket;
+	writefln("Received, cmd:%d, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, packet.data);
 	
-	ubyte[] head = new ubyte[4];
-	long len = sock.receive(head);
-	
-	if (len != 4)
+	final switch (packet.cmd)
 	{
-		sock.close();
-		writeln("Connection error.");
-		return;
-	}
-	
-	int msgLength = head.peek!int();
-    ubyte[] buffer = new ubyte[msgLength];
-    len = sock.receive(buffer);
-
-    if (len == Socket.ERROR)
-    {
-		sock.close();
-		writeln("Connection error.");
-		return;
-	}
-
-	//writefln("Received %d bytes from %s: \"%s\"", len, sock.remoteAddress().toString(), buffer);
-	buffer = doBusinessHandle(buffer);
-	
-	if (buffer !is null) sock.send(buffer);
-    //sock.close();
-}
-
-private ubyte[] doBusinessHandle(ubyte[] buffer)
-{
-	Nullable!Packet packet = MsgProtocol.parse(buffer);
-	
-	if (packet.isNull)
-	{
-		return null;
-	}
-	
-	writefln("Received, cmd:%d, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, packet.content);
-	
-	switch (packet.cmd)
-	{
-		case 1:
-			peers[packet.fromPeerId] = packet.content;
-			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, string.init);
-		case 2:
+		case Cmd.ReportPeerInfo:
+			peers[packet.fromPeerId] = new PeerOther(packet.fromPeerId, cast(string)packet.data);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, string.init, packet.fromPeerId);
+			socket.sendTo(buffer, address);
+			break;
+		case Cmd.RequestAllPeers:
 			string response;
 			foreach(k, v; peers)
 			{
 				//if (k == packet.fromPeerId) continue;
-				response ~= (k ~ "|" ~ v ~ ";");
+				response ~= (k ~ "|" ~ v.serialize ~ ";");
 			}
 			if (response == string.init) response = ";";
-			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, response[0..$ - 1]);
-		case 3:
-			if (packet.toPeerId !in peers)
-			{
-				return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, "peer not found.");
-			}
-			Peer peer = new Peer(packet.toPeerId, peers[packet.toPeerId]);
-			UdpSocket sock = new UdpSocket();
-			sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, dur!"seconds"(5));
-			sock.bind(new InternetAddress("0.0.0.0", 0));
-			sock.sendTo(buffer, new InternetAddress(peer.natInfo.externalIp, peer.natInfo.externalPort));
-			sock.close();
-			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, string.init);
-		default:
-			return MsgProtocol.build(packet.cmd, string.init, packet.fromPeerId, string.init);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, string.init, packet.fromPeerId, cast(ubyte[])(response[0..$ - 1]));
+			socket.sendTo(buffer, address);
+			break;
+		case Cmd.PostMessage:
+			if (packet.toPeerId !in peers) return;
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessage, packet.fromPeerId, packet.fromPeerId, packet.data);
+			PeerOther po = peers[packet.toPeerId];
+			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
+			break;
+		case Cmd.RequestMakeHole:
+			if (packet.toPeerId !in peers) return;
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, packet.fromPeerId, packet.fromPeerId, packet.data);
+			PeerOther po = peers[packet.toPeerId];
+			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
+			break;
+		case Cmd.ResponseMakeHole:
+			if (packet.toPeerId !in peers) return;
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, packet.fromPeerId, packet.fromPeerId, packet.data);
+			PeerOther po = peers[packet.toPeerId];
+			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
+			break;
 	}
 }
 
@@ -122,4 +108,7 @@ private void loadConfig()
     JSONValue jt = j["tracker"];
     host = jt["host"].str;
     port = jt["port"].str.to!ushort;
+    
+    jt = j["protocol"];
+	magicNumber = jt["magic number"].str.to!ushort;
 }

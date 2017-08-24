@@ -1,4 +1,4 @@
-module nattype;
+module ice.nattype;
 
 enum NATType
 {

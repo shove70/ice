@@ -1,4 +1,4 @@
-module stunserver;
+module ice.stunserver;
 
  struct StunServer
 {

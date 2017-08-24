@@ -1,4 +1,4 @@
-module utils;
+module ice.utils;
 
 import std.uuid;
 import std.random;
@@ -8,6 +8,8 @@ import std.digest.md;
 import std.file;
 import std.array;
 
+import cryption.tea.xtea;
+
 public string genUuid()	// RFC3489 128bits transaction ID
 {
 	Xorshift192 gen;
@@ -16,12 +18,10 @@ public string genUuid()	// RFC3489 128bits transaction ID
 	return uuid.toString.replace("-", "").toUpper();
 }
 
-public string MD5(string T = "string")(string src)
+public string MD5(scope const(void[])[] src...)
 {
-	assert(T == "string" || T == "file");
-	
 	auto md5 = new MD5Digest();
-	ubyte[] hash = (T == "string") ? md5.digest(src) : md5.digest(std.file.read(src));
+	ubyte[] hash = md5.digest(src);
 	
     return toHexString(hash).toUpper();
 }
@@ -90,4 +90,16 @@ public string mergeString(Params...)(Params params)
 	}
 	
 	return ret.data;
+}
+
+public alias xtea!(Xtea.encrypt) xteaEncrypt;
+public alias xtea!(Xtea.decrypt) xteaDecrypt;
+
+public ubyte[] xtea(alias T)(ubyte[] input, string key)
+{
+	ubyte[] buf = cast(ubyte[])key;
+	int[4] bkey = [buf[0], buf[1], buf[2], buf[3]];
+	int rounds = 64;
+	
+	return T(input, bkey, rounds, true);
 }
