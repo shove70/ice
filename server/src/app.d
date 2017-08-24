@@ -53,7 +53,7 @@ void listener()
 		{
 			continue;
 		}
-		writeln(packet.cmd);
+
 		handler(packet, address);
     }
 }
@@ -94,9 +94,9 @@ private void handler(Packet packet, Address address)
 			break;
 		case Cmd.ResponseMakeHole:
 			if (packet.toPeerId !in peers) return;
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, packet.fromPeerId, packet.fromPeerId, packet.data);
-			PeerOther po = peers[packet.toPeerId];
-			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
+			//ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, packet.fromPeerId, packet.fromPeerId, packet.data);
+			//PeerOther po = peers[packet.toPeerId];
+			//socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
 	}
 }

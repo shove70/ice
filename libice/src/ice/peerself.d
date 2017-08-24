@@ -72,17 +72,17 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 			}
 			break;
 		case Cmd.PostMessage:
-			if (packet.fromPeerId in peers)
-			{
-				peers[packet.fromPeerId].hasHole = true;
-			}
 			dg(packet.fromPeerId, packet.toPeerId, packet.data);
 			//writefln("%s postMessage to %s: %s", packet.fromPeerId, packet.toPeerId, packet.data);
 			break;
 		case Cmd.RequestMakeHole:
-			PeerOther otherPeer = new PeerOther(packet.fromPeerId, cast(string)(packet.data));
+			PeerOther po = new PeerOther(packet.fromPeerId, cast(string)(packet.data));
+			if (packet.fromPeerId !in peers)
+			{
+				peers[packet.fromPeerId] = po;
+			}
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, self.peerId, packet.fromPeerId);
-			Address address = new InternetAddress(otherPeer.natInfo.externalIp, otherPeer.natInfo.externalPort);
+			Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
 			socket.sendTo(buffer, address);
 			address = new InternetAddress(trackerHost, trackerPort);
 			socket.sendTo(buffer, address);
@@ -251,7 +251,7 @@ final class PeerSelf : Peer
 		
 		if (peerOtherId == peerId) return;
 		
-		ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, this.peerId, peerOtherId, cast(ubyte[])peers[peerOtherId].serialize);
+		ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, this.peerId, peerOtherId, cast(ubyte[])serialize);
 		socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
 		if (consoleMessage) writefln("Consult to %s to make a hole...", peerId);
 	}

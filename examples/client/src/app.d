@@ -50,9 +50,8 @@ void main()
 		    continue;
 	    }
 		
-		self.broadcastMessage(cast(ubyte[])line);
 		writefln("Self sent to all: %s", line);
-		write("Please input: ");
+		self.broadcastMessage(cast(ubyte[])line);
 	}
 }
 
