@@ -65,8 +65,11 @@ private void handler(Packet packet, Address address)
 	final switch (packet.cmd)
 	{
 		case Cmd.ReportPeerInfo:
-			peers[packet.fromPeerId] = new PeerOther(packet.fromPeerId, cast(string)packet.data);
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, string.init, packet.fromPeerId);
+			PeerOther po = new PeerOther(packet.fromPeerId, cast(string)packet.data);
+			po.natInfo.externalIp = address.toAddrString();	// To prevent ports from being changed by routers.
+			po.natInfo.externalPort = address.toPortString().to!ushort;
+			peers[packet.fromPeerId] = po;
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, string.init, packet.fromPeerId, cast(ubyte[])po.serialize);
 			socket.sendTo(buffer, address);
 			break;
 		case Cmd.RequestAllPeers:
@@ -82,19 +85,19 @@ private void handler(Packet packet, Address address)
 			break;
 		case Cmd.PostMessage:
 			if (packet.toPeerId !in peers) return;
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessage, packet.fromPeerId, packet.fromPeerId, packet.data);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessage, packet.fromPeerId, packet.toPeerId, packet.data);
 			PeerOther po = peers[packet.toPeerId];
 			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
 		case Cmd.RequestMakeHole:
 			if (packet.toPeerId !in peers) return;
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, packet.fromPeerId, packet.fromPeerId, packet.data);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, packet.fromPeerId, packet.toPeerId, packet.data);
 			PeerOther po = peers[packet.toPeerId];
 			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
 		case Cmd.ResponseMakeHole:
 			if (packet.toPeerId !in peers) return;
-			//ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, packet.fromPeerId, packet.fromPeerId, packet.data);
+			//ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, packet.fromPeerId, packet.toPeerId, packet.data);
 			//PeerOther po = peers[packet.toPeerId];
 			//socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;

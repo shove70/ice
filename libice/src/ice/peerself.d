@@ -60,6 +60,7 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 	{
 		case Cmd.ReportPeerInfo:
 			trackerConnected = true;
+			self.deserialize(packet.data);	// use the new natinfo from tracker return.
 			break;
 		case Cmd.RequestAllPeers:
 			string[] strs = (cast(string)(packet.data)).split(";");
@@ -68,7 +69,17 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 				string[] tp = str.split("|");
 				if (tp.length != 2) continue;
 				
-				peers[tp[0]] = new PeerOther(tp[0], tp[1]);
+				PeerOther poNew = new PeerOther(tp[0], tp[1]);
+				if (tp[0] in peers)
+				{
+					PeerOther po = peers[tp[0]];
+					po.natInfo.externalIp = poNew.natInfo.externalIp;
+					po.natInfo.externalPort = poNew.natInfo.externalPort;
+				}
+				else
+				{
+					peers[tp[0]] = poNew;
+				}
 			}
 			break;
 		case Cmd.PostMessage:
@@ -91,6 +102,7 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 			socket.sendTo(buffer, address);
 			break;
 		case Cmd.ResponseMakeHole:
+			writeln("========");
 		case Cmd.Heartbeat:
 			if (packet.fromPeerId !in peers)
 			{
@@ -113,6 +125,7 @@ void consulting(string toPeerId, shared PeerOther po, shared ubyte[] buffer)
 	
 	while (!peers[toPeerId].hasHole)
 	{
+		writefln("send to %s, .....", toPeerId);
 		socket.sendTo(cast(ubyte[])buffer, address);
 		
 		SysTime time2 = Clock.currTime();
@@ -268,7 +281,7 @@ final class PeerSelf : Peer
 		return true;
 	}
 	
-	public void connectPeers()
+	public void connectToPeers()
 	{
 		if (!isNatAllow)
 		{
@@ -289,13 +302,13 @@ final class PeerSelf : Peer
 				continue;
 			}
 			
-			connectPeer(po.peerId, false);
+			connectToPeer(po.peerId, false);
 		}
 		
 		writeln("Consult to all peers to make a hole...");
 	}
 	
-	public void connectPeer(string peerOtherId, bool consoleMessage = true)
+	public void connectToPeer(string peerOtherId, bool consoleMessage = true)
 	{
 		if (!isNatAllow)
 		{

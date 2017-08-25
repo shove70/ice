@@ -20,7 +20,7 @@ void main()
 		}
 	);
 	self.getAllPeers();
-	self.connectPeers();
+	self.connectToPeers();
 	
 	showMenu();
 	
@@ -45,7 +45,7 @@ void main()
 				writeln("Not connection to tracker(server).");
 			}
 			self.getAllPeers();
-			self.connectPeers();
+			self.connectToPeers();
 			showMenu();
 		    continue;
 	    }
