@@ -82,9 +82,8 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 				peers[packet.fromPeerId] = po;
 			}
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, self.peerId, packet.fromPeerId);
-			Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
-			socket.sendTo(buffer, address);
-			address = new InternetAddress(trackerHost, trackerPort);
+			spawn!()(&consulting, packet.fromPeerId, cast(shared PeerOther)po, cast(shared ubyte[])buffer);
+			Address address = new InternetAddress(trackerHost, trackerPort);
 			socket.sendTo(buffer, address);
 			break;
 		case Cmd.ResponseMakeHole:
@@ -94,6 +93,16 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 			}
 			peers[packet.fromPeerId].hasHole = true;
 			break;
+	}
+}
+
+void consulting(string toPeerId, shared PeerOther po, shared ubyte[] buffer)
+{
+	Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+
+	while (!peers[toPeerId].hasHole)
+	{
+		socket.sendTo(cast(ubyte[])buffer, address);
 	}
 }
 
