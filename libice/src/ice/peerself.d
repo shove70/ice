@@ -81,12 +81,17 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 			{
 				peers[packet.fromPeerId] = po;
 			}
+			po = peers[packet.fromPeerId];
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, self.peerId, packet.fromPeerId);
-			spawn!()(&consulting, packet.fromPeerId, cast(shared PeerOther)po, cast(shared ubyte[])buffer);
+			if (!po.hasHole && !po.consulting)
+			{
+				spawn!()(&consulting, packet.fromPeerId, cast(shared PeerOther)po, cast(shared ubyte[])buffer);
+			}
 			Address address = new InternetAddress(trackerHost, trackerPort);
 			socket.sendTo(buffer, address);
 			break;
 		case Cmd.ResponseMakeHole:
+		case Cmd.Heartbeat:
 			if (packet.fromPeerId !in peers)
 			{
 				break;
@@ -98,11 +103,48 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 
 void consulting(string toPeerId, shared PeerOther po, shared ubyte[] buffer)
 {
+	SysTime time1 = Clock.currTime();
 	Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
 
+	if (po.hasHole || po.consulting)
+		return;
+
+	po.consulting = true;
+	
 	while (!peers[toPeerId].hasHole)
 	{
 		socket.sendTo(cast(ubyte[])buffer, address);
+		
+		SysTime time2 = Clock.currTime();
+		if ((time2 - time1).total!"seconds" > 30)
+		{
+			po.consulting = false;
+			
+			return;
+		}
+	}
+}
+
+void heartbeat(shared PeerSelf _self)
+{
+	PeerSelf self = cast(PeerSelf)_self;
+	ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, self.peerId, string.init);
+	
+	while (true)
+	{
+		Thread.sleep(10.seconds);
+		
+		Address address = new InternetAddress(trackerHost, trackerPort);
+		socket.sendTo(buffer, address);
+		
+		foreach(PeerOther po; peers)
+		{
+			if (!po.hasHole || !self.isNatAllow || !self.isNatAllow(po.natInfo.natType))
+				continue;
+				
+			address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+			socket.sendTo(buffer, address);
+		}
 	}
 }
 
@@ -179,7 +221,8 @@ final class PeerSelf : Peer
 	private void getNatInfo()
 	{
 		natInfo.reset();
-		IceClient client = new IceClient(socket, stunServerList, &natInfo);
+		IceClient client = new IceClient(socket, stunServerList);
+		client.getNatInfo(&natInfo);
 	}
 	
 	public bool isNatAllow()
@@ -219,6 +262,8 @@ final class PeerSelf : Peer
 		
 		writefln("Listening on %s:%d.", natInfo.localIp, natInfo.localPort);
 		spawn!()(&listener, cast(shared PeerSelf)this, cast(shared postMessageCallback)dg);
+		
+		spawn!()(&heartbeat, cast(shared PeerSelf)this);
 		
 		return true;
 	}

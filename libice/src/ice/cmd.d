@@ -6,5 +6,6 @@ enum Cmd
 	RequestAllPeers		= 2,
 	PostMessage			= 3,
 	RequestMakeHole		= 4,
-	ResponseMakeHole	= 5
+	ResponseMakeHole	= 5,
+	Heartbeat			= 6
 }

@@ -45,13 +45,10 @@ class IceClient
 		NATInfo* _natInfo;
 	}
 	
-	this(UdpSocket socket, StunServer[] stunServerList, NATInfo* natInfo)
+	this(UdpSocket socket, StunServer[] stunServerList)
 	{
 		this._socket = socket;
 		this._stunServerList = stunServerList;
-		this._natInfo = natInfo;
-		
-		getNatInfo();
 	}
 	
 	private bool stunTest(string host, ushort port, string sourceIp, ushort sourcePort, string sendData = string.init)
@@ -152,15 +149,20 @@ class IceClient
 	        }
 		}
 		
+		//writeln(*_natInfo);
 		return true;
 	}
 
-	private void getNatInfo()
+	public void getNatInfo(NATInfo* natInfo)
 	{
 		write("Testing the NAT info...");
 		
+		this._natInfo = natInfo;
+		
 		_natInfo.localIp = _socket.localAddress().toAddrString();
 		_natInfo.localPort = _socket.localAddress().toPortString().to!ushort;
+		//_natInfo.sourceIp = _natInfo.localIp;
+		//_natInfo.sourcePort = _natInfo.localPort;
 
 		string stunServer;
 		ushort stunPort;

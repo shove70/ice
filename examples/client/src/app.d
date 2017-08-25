@@ -61,7 +61,8 @@ void showMenu()
 	writeln("All peers:");
 	for(int i; i < peers.keys.length; i++)
 	{
-		writefln("%d: %s [%s]", i + 1, peers.keys[i], peers[peers.keys[i]].hasHole ? "Connected" : "Not conn");
+		PeerOther po = peers[peers.keys[i]];
+		writefln("%d: %s: %s:%d [%s]%s", i + 1, peers.keys[i], po.natInfo.externalIp, po.natInfo.externalPort, po.hasHole ? "Connected" : "Not conn", (peers.keys[i] == self.peerId) ? "[self]" : "");
 	}
 	writeln("Menu:");
 	writeln("1. press the \"peers\" to request all peers from server.");

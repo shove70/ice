@@ -20,8 +20,8 @@ protocol rule (TLV):
 	03: postmessage(send/forward)				-> server forward to other peer
 	04: request make hole						-> server -> other peer: 04 -> other peer reply(two):	-> peer: 05
 																										-> server: 05 -> server to peer: 05
-	05: response make hole(two)					-> none
-												-> server -> peer: 05
+	05: response make hole						-> none
+	06: heartbeat								-> none
 */
 
 struct Packet

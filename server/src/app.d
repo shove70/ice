@@ -98,6 +98,8 @@ private void handler(Packet packet, Address address)
 			//PeerOther po = peers[packet.toPeerId];
 			//socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
+		case Cmd.Heartbeat:
+			break;
 	}
 }
 
