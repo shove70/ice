@@ -66,8 +66,6 @@ private void handler(Packet packet, Address address)
 	{
 		case Cmd.ReportPeerInfo:
 			PeerOther po = new PeerOther(packet.fromPeerId, cast(string)packet.data);
-			po.natInfo.externalIp = address.toAddrString();	// To prevent ports from being changed by routers.
-			po.natInfo.externalPort = address.toPortString().to!ushort;
 			peers[packet.fromPeerId] = po;
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, string.init, packet.fromPeerId, cast(ubyte[])po.serialize);
 			socket.sendTo(buffer, address);
@@ -102,6 +100,10 @@ private void handler(Packet packet, Address address)
 			//socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
 		case Cmd.Heartbeat:
+			if (packet.toPeerId !in peers) return;
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, string.init, packet.fromPeerId, packet.data);
+			PeerOther po = peers[packet.fromPeerId];
+			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
 	}
 }

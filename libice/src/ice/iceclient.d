@@ -55,7 +55,7 @@ class IceClient
 	{
 		Address address = new InternetAddress(host, port);
 		string dataLength = rightJustify((cast(int)(sendData.length / 2)).to!string, 4, '0');
-		string tranId = genUuid();
+		string tranId = genUuid();	// RFC3489 128bits transaction ID
 		string str_data = join([BindRequestMsg, dataLength, tranId, sendData]);
 		ubyte[] data = strToByte_hex(str_data);
 		

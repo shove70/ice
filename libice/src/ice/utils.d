@@ -10,7 +10,7 @@ import std.array;
 
 import cryption.tea.xtea;
 
-public string genUuid()	// RFC3489 128bits transaction ID
+public string genUuid()
 {
 	Xorshift192 gen;
 	gen.seed(unpredictableSeed);
@@ -72,24 +72,18 @@ public string ipFromLong(long ipInt)
 		ipInt /= 256;
 	}
 	
-	return mergeString(
+	return join([
 		part[0].to!string, ".",
 		part[1].to!string, ".",
 		part[2].to!string, ".",
-		part[3].to!string
+		part[3].to!string]
 	);
 }
 
-public string mergeString(Params...)(Params params)
+public bool isLoopbackIpAddress(string ip) //127.0.0.1 -> 127.255.255.254
 {
-	Appender!string ret;
-	
-	foreach(str; params)
-	{
-		ret.put(str);
-	}
-	
-	return ret.data;
+	long ipLong = ipToLong(ip);
+	return ((ipLong >= 2130706433) && (ipLong <= 2147483646));
 }
 
 public alias xtea!(Xtea.encrypt) xteaEncrypt;
