@@ -13,14 +13,13 @@ void main()
 	writeln("ice client.");
 	
 	self = new PeerSelf();
-	self.startListen(
+	self.autoConnectPeerOther = true;
+	self.start(
 		(string fromPeerId, string toPeerId, ubyte[] data)
 		{
 			onReceive(fromPeerId, toPeerId, data);
 		}
 	);
-	self.getAllPeers();
-	self.connectToPeers();
 	
 	showMenu();
 	
@@ -29,35 +28,36 @@ void main()
 	{
 		line = line[0..$ - 1];		
 		if (line == string.init)
+		{
+			write("Please input: ");
 			continue;
+		}
 			
 		if (line == "exit")
 		{
+			writeln("bye.\n");
 			import core.stdc.stdlib;
 			exit(0);
 			return;
 		}
 				
-		if (line == "peers")
+		if (line == "menu")
 		{
-			if (!trackerConnected)
-			{
-				writeln("Not connection to tracker(server).");
-			}
-			self.getAllPeers();
-			self.connectToPeers();
 			showMenu();
 		    continue;
 	    }
 		
-		writefln("Self sent to all: %s", line);
+		writefln("Sent to all: %s", line);
+		write("Please input: ");
 		self.broadcastMessage(cast(ubyte[])line);
 	}
 }
 
 void showMenu()
 {
-	writeln();
+	writeln();	
+	if (!trackerConnected) writeln("Not connection to tracker(server).");
+
 	writeln("All peers:");
 	for(int i; i < peers.keys.length; i++)
 	{
@@ -65,8 +65,8 @@ void showMenu()
 		writefln("%d: %s: %s:%d [%s]%s", i + 1, peers.keys[i], po.natInfo.externalIp, po.natInfo.externalPort, po.hasHole ? "Connected" : "Not conn", (peers.keys[i] == self.peerId) ? "[self]" : "");
 	}
 	writeln("Menu:");
-	writeln("1. press the \"peers\" to request all peers from server.");
-	writeln("2. press other string will be send to all peers.");
+	writeln("1. press the \"menu\" to show this menu items.");
+	writeln("2. press a string will be send to all peers.");
 	writeln("3. press \"exit\" to exit the client.");
 	write("Please input: ");
 }
@@ -74,4 +74,5 @@ void showMenu()
 void onReceive(string fromPeerId, string toPeerId, ubyte[] data)
 {
 	writefln("%s sent to %s: %s", fromPeerId, toPeerId, cast(string)data);
+	write("Please input: ");
 }

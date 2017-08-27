@@ -15,20 +15,19 @@ import cryption.base58;
 
 import ice.peer, ice.peerother, ice.utils, ice.stunserver, ice.iceclient, ice.nattype, ice.natinfo, ice.packet, ice.cmd;
 
-package
-{
-	StunServer[] stunServerList;
-	__gshared string trackerHost;
-	__gshared ushort trackerPort;
-	__gshared ushort magicNumber;
-	
-	__gshared UdpSocket socket;
-}
-
 __gshared bool trackerConnected = false;
 __gshared PeerOther[string] peers;
 
 alias void delegate(string fromPeerId, string toPeerId, ubyte[] data) postMessageCallback;
+
+private:
+
+StunServer[] stunServerList;
+__gshared string trackerHost;
+__gshared ushort trackerPort;
+__gshared ushort magicNumber;
+
+__gshared UdpSocket socket;
 
 void listener(shared PeerSelf _self, postMessageCallback _dg)
 {
@@ -73,7 +72,8 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 				{
 					PeerOther po = peers[tp[0]];
 					po.natInfo.externalIp = poNew.natInfo.externalIp;
-					po.natInfo.externalPort = poNew.natInfo.externalPort;
+					if (po.natInfo.natType != NATType.SymmetricNAT)
+						po.natInfo.externalPort = poNew.natInfo.externalPort;
 				}
 				else
 				{
@@ -93,9 +93,14 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 			}
 			po = peers[packet.fromPeerId];
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, self.peerId, packet.fromPeerId);
-			if (!po.hasHole && !po.consulting)
+			if (!po.hasHole)
 			{
-				spawn!()(&consulting, packet.fromPeerId, cast(shared PeerOther)po, cast(shared ubyte[])buffer);
+				Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+
+				for (int i = 0; i < 3; i++)
+				{
+					socket.sendTo(cast(ubyte[])buffer, address);
+				}	
 			}
 			Address address = new InternetAddress(trackerHost, trackerPort);
 			socket.sendTo(buffer, address);
@@ -111,50 +116,72 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 	}
 }
 
-void reportingPeerInfoToServer(shared PeerSelf _self)
+void reportPeerInfoToServer(shared PeerSelf _self)
 {
+	writeln("Reported peer self's info to server.");
+	
 	PeerSelf self = cast(PeerSelf)_self;
 	Address address = new InternetAddress(trackerHost, trackerPort);
 	ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, self.peerId, string.init, cast(ubyte[])self.serialize);
 	
-	SysTime time1 = Clock.currTime();
-	
+	int times = 1;
 	while (!trackerConnected)
 	{
-		socket.sendTo(buffer, address);
+		for (int i = 0; i < times; i++)
+			socket.sendTo(buffer, address);
 		
-		SysTime time2 = Clock.currTime();
-		if ((time2 - time1).total!"seconds" > 60)
-		{
-			break;
-		}
-		
-		Thread.sleep(500.msecs);
-	}	
+		times++;
+		if (times > 3) times = 3;
+		Thread.sleep(5.seconds);
+	}
 }
 
-void consulting(string toPeerId, shared PeerOther po, shared ubyte[] buffer)
+void getPeers(shared PeerSelf _self)
 {
-	if (po.hasHole || po.consulting)
-		return;
-
-	SysTime time1 = Clock.currTime();
-	Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
-
-	po.consulting = true;
+	PeerSelf self = cast(PeerSelf)_self;
+	ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, self.peerId, string.init);
+	Address address = new InternetAddress(trackerHost, trackerPort);
 	
-	while (!peers[toPeerId].hasHole)
+	while (true)
 	{
-		socket.sendTo(cast(ubyte[])buffer, address);
-		
-		SysTime time2 = Clock.currTime();
-		if ((time2 - time1).total!"seconds" > 30)
+		if (!trackerConnected)
 		{
-			break;
+			Thread.sleep(5.seconds);
+			
+			continue;
 		}
+		
+		socket.sendTo(buffer, address);
+		Thread.sleep(1.minutes);
 	}
+}
+
+void connectPeers(shared PeerSelf _self)
+{
+	PeerSelf self = cast(PeerSelf)_self;
 	
-	po.consulting = false;
+	int times = 5000;
+	while (true)
+	{
+		if (!self.autoConnectPeerOther)
+		{
+			Thread.sleep(500.msecs);
+			
+			continue;
+		}
+		
+		if (!trackerConnected)
+		{
+			Thread.sleep(5.seconds);
+			
+			continue;
+		}
+		
+		self.connectToPeers(false);
+		Thread.sleep(times.msecs);
+		
+		if (times < 60000) times += 5000;
+	}
 }
 
 void heartbeat(shared PeerSelf _self)
@@ -183,8 +210,12 @@ void heartbeat(shared PeerSelf _self)
 	}
 }
 
+public:
+
 final class PeerSelf : Peer
 {
+	bool autoConnectPeerOther = false;
+	
 	this()
 	{
 		loadConfig();
@@ -207,84 +238,10 @@ final class PeerSelf : Peer
 			return;
 		}
 		
-		reportPeerInfoToServer();
+		spawn!()(&reportPeerInfoToServer, cast(shared PeerSelf)this);
 	}
 	
-	private string createPeerId()
-	{
-		string uuid = genUuid();
-
-		return Base58.encode(cast(byte[])strToByte_hex(uuid ~ MD5(uuid)[0 .. 8]));
-	}
-	
-	private void getPeerId()
-	{
-		string path = "./.caches";
-		string fileName = "./.caches/.peerid";
-		
-		string _peerId;
-		
-		if (!std.file.exists(path))
-		{
-			try
-			{
-				std.file.mkdirRecurse(path);
-			}
-			catch (Exception e) { }
-		}
-		
-		if (std.file.exists(fileName))
-		{
-			_peerId = std.file.readText(fileName);
-		}
-		
-		if (!verifyPeerId(_peerId))
-		{
-			_peerId = createPeerId();
-			
-			try
-			{
-				std.file.write(fileName, _peerId);
-			}
-			catch (Exception e) { }
-		}
-		
-		peerId = _peerId;
-		writeln("PeerId: ", peerId);
-	}
-
-	private void getNatInfo()
-	{
-		natInfo.reset();
-		IceClient client = new IceClient(socket, stunServerList);
-		client.getNatInfo(&natInfo);
-	}
-	
-	public bool isNatAllow()
-	{
-		return isNatAllow(natInfo.natType);
-	}
-	
-	private bool isNatAllow(NATType nt)
-	{
-		int type = nt;
-		if ((nt < 0) || (nt > 4)) return false;
-		return true;
-	}
-	
-	private void reportPeerInfoToServer()
-	{
-		if (!isNatAllow)
-		{
-			writeln("Self's NAT type not support.");
-			return;
-		}
-		
-		spawn!()(&reportingPeerInfoToServer, cast(shared PeerSelf)this);
-		writeln("Reported peer self's info to server.");
-	}
-	
-	public bool startListen(postMessageCallback dg)
+	public bool start(postMessageCallback dg)
 	{
 		if (!isNatAllow)
 		{
@@ -293,14 +250,16 @@ final class PeerSelf : Peer
 		}
 		
 		writefln("Listening on %s:%d.", natInfo.localIp, natInfo.localPort);
-		spawn!()(&listener, cast(shared PeerSelf)this, cast(shared postMessageCallback)dg);
+		spawn!()(&listener,		cast(shared PeerSelf)this, cast(shared postMessageCallback)dg);
 		
-		spawn!()(&heartbeat, cast(shared PeerSelf)this);
+		spawn!()(&getPeers,		cast(shared PeerSelf)this);
+		spawn!()(&connectPeers,	cast(shared PeerSelf)this);
+		spawn!()(&heartbeat,	cast(shared PeerSelf)this);
 		
 		return true;
 	}
 	
-	public void connectToPeers()
+	public void connectToPeers(bool consoleMessage = true)
 	{
 		if (!isNatAllow)
 		{
@@ -310,7 +269,7 @@ final class PeerSelf : Peer
 		
 		foreach(ref PeerOther po; peers)
 		{
-			if (po.hasHole || !isNatAllow(po.natInfo.natType) || (po.natInfo.natType == NATType.SymmetricNAT))
+			if (po.hasHole || !isNatAllow(po.natInfo.natType))// || (po.natInfo.natType == NATType.SymmetricNAT))
 			{
 				continue;
 			}
@@ -321,13 +280,13 @@ final class PeerSelf : Peer
 				continue;
 			}
 			
-			connectToPeer(po.peerId, false);
+			connectToPeer(po, false);
 		}
 		
-		writeln("Consult to all peers to make a hole...");
+		if (consoleMessage) writeln("Consult to all peers to make a hole...");
 	}
 	
-	public void connectToPeer(string peerOtherId, bool consoleMessage = true)
+	public void connectToPeer(PeerOther po, bool consoleMessage = true)
 	{
 		if (!isNatAllow)
 		{
@@ -335,10 +294,22 @@ final class PeerSelf : Peer
 			return;
 		}
 		
-		if (peerOtherId == peerId) return;
+		if (po.peerId == peerId)
+		{
+			po.hasHole = true;
+			return;
+		}
 		
-		ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, this.peerId, peerOtherId, cast(ubyte[])serialize);
+		ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, this.peerId, po.peerId, cast(ubyte[])serialize);
 		socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
+		
+		Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+		
+		for (int i = 0; i < 3; i++)
+		{
+			socket.sendTo(buffer, address);
+		}
+		
 		if (consoleMessage) writefln("Consult to %s to make a hole...", peerId);
 	}
 
@@ -396,20 +367,69 @@ final class PeerSelf : Peer
 		
 		if (consoleMessage) writeln("Error: There is no connection to peer other yet.");
 	}
-	
-	public void getAllPeers(bool consoleMessage = true)
+
+	private string createPeerId()
 	{
-		if (!isNatAllow)
-		{
-			writeln("Self's NAT type not support.");
-			return;
-		}
-		
-		ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, this.peerId, string.init);
-		socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
-		if (consoleMessage) writeln("Request all peers from server.");
+		string uuid = genUuid();
+
+		return Base58.encode(cast(byte[])strToByte_hex(uuid ~ MD5(uuid)[0 .. 8]));
 	}
 	
+	private void getPeerId()
+	{
+		string path = "./.caches";
+		string fileName = "./.caches/.peerid";
+		
+		string _peerId;
+		
+		if (!std.file.exists(path))
+		{
+			try
+			{
+				std.file.mkdirRecurse(path);
+			}
+			catch (Exception e) { }
+		}
+		
+		if (std.file.exists(fileName))
+		{
+			_peerId = std.file.readText(fileName);
+		}
+		
+		if (!verifyPeerId(_peerId))
+		{
+			_peerId = createPeerId();
+			
+			try
+			{
+				std.file.write(fileName, _peerId);
+			}
+			catch (Exception e) { }
+		}
+		
+		peerId = _peerId;
+		writeln("PeerId: ", peerId);
+	}
+
+	private void getNatInfo()
+	{
+		natInfo.reset();
+		IceClient client = new IceClient(socket, stunServerList);
+		client.getNatInfo(&natInfo);
+	}
+	
+	private bool isNatAllow()
+	{
+		return isNatAllow(natInfo.natType);
+	}
+	
+	private bool isNatAllow(NATType nt)
+	{
+		int type = nt;
+		if ((nt < 0) || (nt > 4)) return false;
+		return true;
+	}
+
 	private void loadConfig()
 	{
 		JSONValue j = parseJSON(std.file.readText("./ice.conf"));

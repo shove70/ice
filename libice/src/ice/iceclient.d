@@ -155,7 +155,7 @@ class IceClient
 
 	public void getNatInfo(NATInfo* natInfo)
 	{
-		write("Testing the NAT info...");
+		writeln("Testing the NAT info...");
 		
 		this._natInfo = natInfo;
 		
