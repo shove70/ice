@@ -74,5 +74,5 @@ void showMenu()
 void onReceive(string fromPeerId, string toPeerId, ubyte[] data)
 {
 	writefln("%s sent to %s: %s", fromPeerId, toPeerId, cast(string)data);
-	write("Please input: ");
+	writeln("Please input: ");
 }

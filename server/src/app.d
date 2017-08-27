@@ -58,17 +58,18 @@ void listener()
     }
 }
 
-private void handler(Packet packet, Address address)
+private void handler(Packet packet, Address sourceAddress)
 {
-	//writefln("Received, cmd:%s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, cast(string)packet.data);
+	PeerOther fromPeer = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
+	peers[packet.fromPeerId] = fromPeer;
 	
 	final switch (packet.cmd)
 	{
 		case Cmd.ReportPeerInfo:
-			PeerOther po = new PeerOther(packet.fromPeerId, cast(string)packet.data);
-			peers[packet.fromPeerId] = po;
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, string.init, packet.fromPeerId, cast(ubyte[])po.serialize);
-			socket.sendTo(buffer, address);
+			//PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
+			//peers[packet.fromPeerId] = po;
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, NATType.Uninit, string.init, packet.fromPeerId);
+			socket.sendTo(buffer, sourceAddress);
 			break;
 		case Cmd.RequestAllPeers:
 			string response;
@@ -78,32 +79,33 @@ private void handler(Packet packet, Address address)
 				response ~= (k ~ "|" ~ v.serialize ~ ";");
 			}
 			if (response == string.init) response = ";";
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, string.init, packet.fromPeerId, cast(ubyte[])(response[0..$ - 1]));
-			socket.sendTo(buffer, address);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, NATType.Uninit, string.init, packet.fromPeerId, cast(ubyte[])(response[0..$ - 1]));
+			socket.sendTo(buffer, sourceAddress);
 			break;
-		case Cmd.PostMessage:
+		case Cmd.PostMessageDirect:
+		case Cmd.PostMessageForward:
 			if (packet.toPeerId !in peers) return;
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessage, packet.fromPeerId, packet.toPeerId, packet.data);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessageForward, packet.fromNatType, packet.fromPeerId, packet.toPeerId, packet.data);
 			PeerOther po = peers[packet.toPeerId];
 			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
-		case Cmd.RequestMakeHole:
+		case Cmd.RequestMakeHoleDirect:
+		case Cmd.RequestMakeHoleForward:
 			if (packet.toPeerId !in peers) return;
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, packet.fromPeerId, packet.toPeerId, packet.data);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHoleForward, packet.fromNatType, packet.fromPeerId, packet.toPeerId, packet.data);
 			PeerOther po = peers[packet.toPeerId];
 			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
-		case Cmd.ResponseMakeHole:
+		case Cmd.ResponseMakeHoleDirect:
+		case Cmd.ResponseMakeHoleForward:
 			if (packet.toPeerId !in peers) return;
-			//ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, packet.fromPeerId, packet.toPeerId, packet.data);
-			//PeerOther po = peers[packet.toPeerId];
-			//socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHoleForward, NATType.Uninit, packet.fromPeerId, packet.toPeerId);
+			PeerOther po = peers[packet.toPeerId];
+			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
 		case Cmd.Heartbeat:
-			if (packet.toPeerId !in peers) return;
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, string.init, packet.fromPeerId, packet.data);
-			PeerOther po = peers[packet.fromPeerId];
-			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, NATType.Uninit, string.init, string.init);	// minimize it.
+			socket.sendTo(buffer, sourceAddress);
 			break;
 	}
 }

@@ -7,36 +7,51 @@ import std.string;
 import std.conv;
 import std.typecons;
 
-import ice.cmd, ice.utils;
+import ice.utils, ice.natinfo;
+
+enum Cmd
+{
+	ReportPeerInfo				= 1,
+	RequestAllPeers				= 2,	
+	PostMessageDirect			= 3,
+	PostMessageForward			= 4,
+	RequestMakeHoleDirect		= 5,
+	RequestMakeHoleForward		= 6,
+	ResponseMakeHoleDirect		= 7,
+	ResponseMakeHoleForward		= 8,
+	Heartbeat					= 9
+}
 
 /**
 protocol rule (TLV):
-	magic_number(ushort) ~ total_len(ushort) ~ cmd(byte) ~ len(byte)+from(string) ~ len(byte)+to(string) ~ len(ushort)+content(string) ~ ushort(hash(all)[0..4])
+	magic_number(ushort) ~ total_len(ushort) ~ cmd(byte) ~ sender_nattype(byte) ~ len(byte)+from(string) ~ len(byte)+to(string) ~ len(ushort)+data(string) ~ ushort(hash(all)[0..4])
 	
 	cmd:
 	
-	01: report a peer info (for client self)	-> server reply: 01,"",to,""
-	02: request all peers info from server.		-> server reply: 02,"",to,"id|info;id|info;..."
-	03: postmessage(send/forward)				-> server forward to other peer
-	04: request make hole						-> server -> other peer: 04 -> other peer reply(two):	-> peer: 05
-																										-> server: 05 -> server to peer: 05
-	05: response make hole						-> none
-	06: heartbeat								-> none
+	1: report a peer info (for client self)	-> server reply: 1,"",to,""
+	2: request all peers from server.		-> server reply: 2,"",to,"id|info;id|info;..."
+	3: postmessage(direct send)				-> none
+	4: postmessage(forward)					-> server forward: 4,from,to,data
+	5: request make hole(direct)			-> peerother reply peer: 7
+	6: request make hole(forward)			-> server forward: 6,from,to,data -> peerother reply(two):	-> peer:   7
+																										-> server: 7 -> server to peer: 8
+	9: heartbeat							-> none
 */
 
 struct Packet
 {
 	Cmd cmd;
+	NATType fromNatType;
 	string fromPeerId;
 	string toPeerId;
 	ubyte[] data;
 	
-	static ubyte[] build(ushort magicNumber, Cmd cmd, string fromPeerId, string toPeerId, ubyte[] data = null)
+	static ubyte[] build(ushort magicNumber, Cmd cmd, NATType fromNatType, string fromPeerId, string toPeerId, ubyte[] data = null)
 	{
 		ubyte[] from_buf = cast(ubyte[])fromPeerId;
 		ubyte[] to_buf = cast(ubyte[])toPeerId;
 		ubyte[] data_buf = cast(ubyte[])data;
-		ulong total_len = from_buf.length + to_buf.length + data_buf.length + 6;
+		ulong total_len = from_buf.length + to_buf.length + data_buf.length + 7;
 		
 		assert(total_len <= 65503);
 		
@@ -46,6 +61,8 @@ struct Packet
 		
 		int icmd = cmd;
 		buffer ~= cast(ubyte)icmd;
+		int itype = fromNatType;
+		buffer ~= cast(ubyte)itype;
 		
 		buffer ~= cast(ubyte)(from_buf.length);
 		buffer ~= from_buf;
@@ -83,7 +100,8 @@ struct Packet
 		Packet packet;
 		
 		packet.cmd = cast(Cmd)(buffer[0]);
-		buffer = buffer[1..$];
+		packet.fromNatType = cast(NATType)(buffer[1]);
+		buffer = buffer[2..$];
 		
 		t_len = buffer[0];
 		packet.fromPeerId = cast(string)buffer[1..t_len + 1];

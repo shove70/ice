@@ -5,7 +5,7 @@ import std.bitmanip;
 
 import cryption.base58;
 
-import ice.utils, ice.nattype, ice.natinfo;
+import ice.utils, ice.natinfo;
 
 abstract class Peer
 {

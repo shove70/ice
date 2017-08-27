@@ -13,7 +13,48 @@ import std.concurrency;
 
 import cryption.base58;
 
-import ice.peer, ice.peerother, ice.utils, ice.stunserver, ice.iceclient, ice.nattype, ice.natinfo, ice.packet, ice.cmd;
+import ice.peer, ice.peerother, ice.utils, ice.stunserver, ice.iceclient, ice.natinfo, ice.packet;
+
+/**
+make hole scheme:
+
+0 OpenInternet
+1 FullCone
+2 Restrict
+3 RestrictPort
+4 Symmetric
+
+0:
+	0: marked as hasHole
+	1: request, response
+	2: ditto
+	3: ditto
+	4: request, response, Save peer other's IP/Port
+1:
+	0: direct request, response
+	1: request, response
+	2: ditto
+	3: ditto
+	4: request, response, Save peer other's IP/Port
+2:
+	0: direct request, response
+	1: request, response
+	2: ditto
+	3: ditto
+	4: request, response, Save peer other's IP/Port
+3:
+	0: direct request, response
+	1: request, response
+	2: ditto
+	3: ditto
+	4: No handling, direct forwarding!!
+4:
+	0: direct request, response
+	1: request, response, peer other save self's IP/Port
+	2: ditto
+	3: No handling, direct forwarding!!
+	4: No handling, direct forwarding!!
+*/
 
 __gshared bool trackerConnected = false;
 __gshared PeerOther[string] peers;
@@ -29,10 +70,9 @@ __gshared ushort magicNumber;
 
 __gshared UdpSocket socket;
 
-void listener(shared PeerSelf _self, postMessageCallback _dg)
+void listener(shared PeerSelf _self, postMessageCallback dg)
 {
 	PeerSelf self = cast(PeerSelf)_self;
-	postMessageCallback dg = cast(postMessageCallback)_dg;
 
     while (true)
     {
@@ -47,13 +87,12 @@ void listener(shared PeerSelf _self, postMessageCallback _dg)
 			continue;
 		}
 		
-		//writefln("Received, cmd:%s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, cast(string)packet.data);
-		
-		handler(self, dg, packet);
+		//writefln("Received, cmd: %s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, cast(string)packet.data);
+		handler(self, dg, packet, address);
     }
 }
 
-void handler(PeerSelf self, postMessageCallback dg, Packet packet)
+void handler(PeerSelf self, postMessageCallback dg, Packet packet, Address sourceAddress)
 {
 	final switch (packet.cmd)
 	{
@@ -81,37 +120,72 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet)
 				}
 			}
 			break;
-		case Cmd.PostMessage:
-			dg(packet.fromPeerId, packet.toPeerId, packet.data);
-			//writefln("%s postMessage to %s: %s", packet.fromPeerId, packet.toPeerId, packet.data);
-			break;
-		case Cmd.RequestMakeHole:
-			PeerOther po = new PeerOther(packet.fromPeerId, cast(string)(packet.data));
+		case Cmd.PostMessageDirect:
+			PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
 			if (packet.fromPeerId !in peers)
 			{
 				peers[packet.fromPeerId] = po;
 			}
 			po = peers[packet.fromPeerId];
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHole, self.peerId, packet.fromPeerId);
-			if (!po.hasHole)
-			{
-				Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
-
-				for (int i = 0; i < 3; i++)
-				{
-					socket.sendTo(cast(ubyte[])buffer, address);
-				}	
-			}
-			Address address = new InternetAddress(trackerHost, trackerPort);
-			socket.sendTo(buffer, address);
+			po.hasHole = true;
+			dg(packet.fromPeerId, packet.toPeerId, packet.data);
 			break;
-		case Cmd.ResponseMakeHole:
-		case Cmd.Heartbeat:
+		case Cmd.PostMessageForward:
+			dg(packet.fromPeerId, packet.toPeerId, packet.data);
+			break;
+		case Cmd.RequestMakeHoleDirect:
+			PeerOther po = new PeerOther(packet.fromPeerId, packet.data);
 			if (packet.fromPeerId !in peers)
 			{
-				break;
+				peers[packet.fromPeerId] = po;
 			}
-			peers[packet.fromPeerId].hasHole = true;
+			po = peers[packet.fromPeerId];
+			po.hasHole = true;
+			if (po.natInfo.natType == NATType.SymmetricNAT)
+			{
+				po.natInfo.externalIp = sourceAddress.toAddrString();
+				po.natInfo.externalPort = sourceAddress.toPortString().to!ushort;
+			}
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHoleDirect, self.natInfo.natType, self.peerId, packet.fromPeerId);
+			Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+			for (int i = 0; i < 3; i++)
+			{
+				socket.sendTo(cast(ubyte[])buffer, address);
+			}
+			break;
+		case Cmd.RequestMakeHoleForward:
+			PeerOther po = new PeerOther(packet.fromPeerId, packet.data);
+			if (packet.fromPeerId !in peers)
+			{
+				peers[packet.fromPeerId] = po;
+			}
+			po = peers[packet.fromPeerId];
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHoleForward, self.natInfo.natType, self.peerId, packet.fromPeerId);
+			Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+			for (int i = 0; i < 3; i++)
+			{
+				socket.sendTo(cast(ubyte[])buffer, address);
+			}
+			address = new InternetAddress(trackerHost, trackerPort);
+			socket.sendTo(buffer, address);
+			break;
+		case Cmd.ResponseMakeHoleDirect:
+			PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
+			if (packet.fromPeerId !in peers)
+			{
+				peers[packet.fromPeerId] = po;
+			}
+			po = peers[packet.fromPeerId];
+			po.hasHole = true;
+			if (po.natInfo.natType == NATType.SymmetricNAT)
+			{
+				po.natInfo.externalIp = sourceAddress.toAddrString();
+				po.natInfo.externalPort = sourceAddress.toPortString().to!ushort;
+			}
+			break;
+		case Cmd.ResponseMakeHoleForward:
+			break;
+		case Cmd.Heartbeat:
 			break;
 	}
 }
@@ -122,7 +196,7 @@ void reportPeerInfoToServer(shared PeerSelf _self)
 	
 	PeerSelf self = cast(PeerSelf)_self;
 	Address address = new InternetAddress(trackerHost, trackerPort);
-	ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, self.peerId, string.init, cast(ubyte[])self.serialize);
+	ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, self.natInfo.natType, self.peerId, string.init);
 	
 	int times = 1;
 	while (!trackerConnected)
@@ -139,7 +213,7 @@ void reportPeerInfoToServer(shared PeerSelf _self)
 void getPeers(shared PeerSelf _self)
 {
 	PeerSelf self = cast(PeerSelf)_self;
-	ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, self.peerId, string.init);
+	ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, self.natInfo.natType, self.peerId, string.init);
 	Address address = new InternetAddress(trackerHost, trackerPort);
 	
 	while (true)
@@ -187,7 +261,7 @@ void connectPeers(shared PeerSelf _self)
 void heartbeat(shared PeerSelf _self)
 {
 	PeerSelf self = cast(PeerSelf)_self;
-	ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, self.peerId, string.init);
+	ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, self.natInfo.natType, string.init, string.init);	// minimize it.
 	
 	while (true)
 	{
@@ -196,11 +270,11 @@ void heartbeat(shared PeerSelf _self)
 		Address address = new InternetAddress(trackerHost, trackerPort);
 		socket.sendTo(buffer, address);
 		
-		if (self.isNatAllow && self.natInfo.natType != NATType.SymmetricNAT)
+		if (self.isNatAllow)
 		{
 			foreach(PeerOther po; peers)
 			{
-				if (!po.hasHole || !self.isNatAllow(po.natInfo.natType) || (po.natInfo.natType == NATType.SymmetricNAT))
+				if (!po.hasHole)
 					continue;
 					
 				address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
@@ -269,12 +343,12 @@ final class PeerSelf : Peer
 		
 		foreach(ref PeerOther po; peers)
 		{
-			if (po.hasHole || !isNatAllow(po.natInfo.natType))// || (po.natInfo.natType == NATType.SymmetricNAT))
+			if (po.hasHole || !isNatAllow(po.natInfo.natType) || !canMakeHole(po.natInfo.natType))
 			{
 				continue;
 			}
 			
-			if ((po.peerId == this.peerId) || (po.natInfo.natType == NATType.OpenInternet))
+			if ((po.peerId == this.peerId) || ((this.natInfo.natType == NATType.OpenInternet) && (po.natInfo.natType == NATType.OpenInternet)))
 			{
 				po.hasHole = true;
 				continue;
@@ -294,15 +368,33 @@ final class PeerSelf : Peer
 			return;
 		}
 		
-		if (po.peerId == peerId)
+		if ((po.peerId == this.peerId) || ((this.natInfo.natType == NATType.OpenInternet) && (po.natInfo.natType == NATType.OpenInternet)))
 		{
 			po.hasHole = true;
 			return;
 		}
 		
-		ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestMakeHole, this.peerId, po.peerId, cast(ubyte[])serialize);
-		socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
+		if (!isNatAllow(po.natInfo.natType))
+		{
+			if (consoleMessage) writeln("Peerother's NAT type not support.");
+			return;
+		}
 		
+		if (!canMakeHole(po.natInfo.natType))
+		{
+			if (consoleMessage) writeln("Both sides's NAT type not support.");
+			return;
+		}
+
+		ubyte[] buffer;
+
+		if (po.natInfo.natType != NATType.OpenInternet)
+		{
+			buffer = Packet.build(magicNumber, Cmd.RequestMakeHoleForward, this.natInfo.natType, this.peerId, po.peerId, cast(ubyte[])(this.serialize));
+			socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
+		}
+
+		buffer = Packet.build(magicNumber, Cmd.RequestMakeHoleDirect, this.natInfo.natType, this.peerId, po.peerId, cast(ubyte[])(this.serialize));
 		Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
 		
 		for (int i = 0; i < 3; i++)
@@ -323,12 +415,12 @@ final class PeerSelf : Peer
 		
 		foreach(ref PeerOther po; peers)
 		{
-			if (po.natInfo.natType == NATType.OpenInternet)
+			if ((po.peerId == this.peerId) || ((this.natInfo.natType == NATType.OpenInternet) && (po.natInfo.natType == NATType.OpenInternet)))
 			{
 				po.hasHole = true;
 			}
 
-			if (!isNatAllow(po.natInfo.natType))
+			if ((po.peerId == this.peerId) || !isNatAllow(po.natInfo.natType))
 			{
 				continue;
 			}
@@ -352,20 +444,17 @@ final class PeerSelf : Peer
 			return;
 		}
 		
-		ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessage, peerId, toPeerId, data);
-		if (po.hasHole || po.natInfo.natType == NATType.OpenInternet)
+		if (po.hasHole)
 		{
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessageDirect, this.natInfo.natType, peerId, toPeerId, data);
 			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
-			return;
 		}
-
-		if ((this.natInfo.natType == NATType.SymmetricNAT) || (po.natInfo.natType == NATType.SymmetricNAT))
+		else if (!canMakeHole(po.natInfo.natType))
 		{
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessageForward, this.natInfo.natType, peerId, toPeerId, data);
 			socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
-			return;
 		}
-		
-		if (consoleMessage) writeln("Error: There is no connection to peer other yet.");
+		else if (consoleMessage) writeln("Error: There is no connection to peer other yet.");
 	}
 
 	private string createPeerId()
@@ -427,6 +516,26 @@ final class PeerSelf : Peer
 	{
 		int type = nt;
 		if ((nt < 0) || (nt > 4)) return false;
+		return true;
+	}
+
+	private bool canMakeHole(NATType poNatType)
+	{
+		if (!isNatAllow)
+			return false;
+		
+		if (this.natInfo.natType == NATType.RestrictPortNAT)
+		{
+			if (poNatType == NATType.SymmetricNAT)
+				return false;
+		}
+		
+		if (this.natInfo.natType == NATType.SymmetricNAT)
+		{
+			if ((poNatType == NATType.RestrictPortNAT) || (poNatType == NATType.SymmetricNAT))
+				return false;
+		}
+		
 		return true;
 	}
 

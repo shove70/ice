@@ -7,7 +7,7 @@ import std.string;
 import std.datetime;
 import std.array;
 
-import ice.stunserver, ice.utils, ice.nattype, ice.natinfo;
+import ice.stunserver, ice.utils, ice.natinfo;
 
 class IceClient
 {
