@@ -15,9 +15,9 @@ void main()
 	self = new PeerSelf();
 	self.autoConnectPeerOthers = true;
 	self.start(
-		(string fromPeerId, string toPeerId, ubyte[] data)
+		(string fromPeerId, string toPeerId, ubyte[] data, bool isForward)
 		{
-			onReceive(fromPeerId, toPeerId, data);
+			onReceive(fromPeerId, toPeerId, data, isForward);
 		}
 	);
 	
@@ -71,8 +71,8 @@ void showMenu()
 	write("Please input: ");
 }
 
-void onReceive(string fromPeerId, string toPeerId, ubyte[] data)
+void onReceive(string fromPeerId, string toPeerId, ubyte[] data, bool isForward)
 {
-	writefln("%s sent to %s: %s", fromPeerId, toPeerId, cast(string)data);
+	writefln("%s sent to %s%d: %s", fromPeerId, toPeerId, isForward ? "[Forward]" : "", cast(string)data);
 	writeln("Please input: ");
 }

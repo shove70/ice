@@ -59,7 +59,7 @@ make hole scheme:
 __gshared bool trackerConnected = false;
 __gshared PeerOther[string] peers;
 
-alias void delegate(string fromPeerId, string toPeerId, ubyte[] data) postMessageCallback;
+alias void delegate(string fromPeerId, string toPeerId, ubyte[] data, bool isForward) postMessageCallback;
 
 private:
 
@@ -128,10 +128,10 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet, Address sourc
 			}
 			po = peers[packet.fromPeerId];
 			po.hasHole = true;
-			dg(packet.fromPeerId, packet.toPeerId, packet.data);
+			dg(packet.fromPeerId, packet.toPeerId, packet.data, false);
 			break;
 		case Cmd.PostMessageForward:
-			dg(packet.fromPeerId, packet.toPeerId, packet.data);
+			dg(packet.fromPeerId, packet.toPeerId, packet.data, true);
 			break;
 		case Cmd.RequestMakeHoleDirect:
 			PeerOther po = new PeerOther(packet.fromPeerId, packet.data);
