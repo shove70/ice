@@ -163,7 +163,7 @@ void connectPeers(shared PeerSelf _self)
 	int times = 5000;
 	while (true)
 	{
-		if (!self.autoConnectPeerOther)
+		if (!self.autoConnectPeerOthers)
 		{
 			Thread.sleep(500.msecs);
 			
@@ -214,7 +214,7 @@ public:
 
 final class PeerSelf : Peer
 {
-	bool autoConnectPeerOther = false;
+	bool autoConnectPeerOthers = false;
 	
 	this()
 	{

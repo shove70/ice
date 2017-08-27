@@ -161,8 +161,6 @@ class IceClient
 		
 		_natInfo.localIp = _socket.localAddress().toAddrString();
 		_natInfo.localPort = _socket.localAddress().toPortString().to!ushort;
-		//_natInfo.sourceIp = _natInfo.localIp;
-		//_natInfo.sourcePort = _natInfo.localPort;
 
 		string stunServer;
 		ushort stunPort;

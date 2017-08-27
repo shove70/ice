@@ -13,7 +13,7 @@ void main()
 	writeln("ice client.");
 	
 	self = new PeerSelf();
-	self.autoConnectPeerOther = true;
+	self.autoConnectPeerOthers = true;
 	self.start(
 		(string fromPeerId, string toPeerId, ubyte[] data)
 		{
