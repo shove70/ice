@@ -8,6 +8,7 @@ import ice.peer, ice.natinfo;
 final class PeerOther : Peer
 {
 	public bool hasHole = false;
+	public bool consulting = false;
 	
 	this(string peerId, ubyte[] serializedBuffer)
 	{

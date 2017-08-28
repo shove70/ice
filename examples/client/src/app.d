@@ -61,7 +61,7 @@ void showMenu()
 	for(int i; i < peers.keys.length; i++)
 	{
 		PeerOther po = peers[peers.keys[i]];
-		writefln("%d: %s: %s:%d [%s]%s", i + 1, peers.keys[i], po.natInfo.externalIp, po.natInfo.externalPort, po.hasHole ? "Connected" : "Not conn", (peers.keys[i] == self.peerId) ? "[self]" : "");
+		writefln("%d: %s: %s:%d\t%s\t[%s]%s", i + 1, peers.keys[i], po.natInfo.externalIp, po.natInfo.externalPort, po.natInfo.natType, po.hasHole ? "Connected" : "Not conn", (peers.keys[i] == self.peerId) ? "[self]" : "");
 	}
 	writeln("Menu:");
 	writeln("1. press the \"menu\" to show this menu items.");
@@ -72,6 +72,6 @@ void showMenu()
 
 void onReceive(string fromPeerId, string toPeerId, ubyte[] data, bool isForward)
 {
-	writefln("%s sent to %s%s: %s", fromPeerId, toPeerId, isForward ? "[Forward]" : "", cast(string)data);
+	writefln("%s%s: %s", fromPeerId, isForward ? "[Forward]" : "", cast(string)data);
 	writeln("Please input: ");
 }

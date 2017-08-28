@@ -59,7 +59,7 @@ make hole scheme:
 __gshared bool trackerConnected = false;
 __gshared PeerOther[string] peers;
 
-alias void delegate(string fromPeerId, string toPeerId, ubyte[] data, bool isForward) postMessageCallback;
+alias void delegate(string fromPeerId, string toPeerId, ubyte[] data, bool isForward) PostMessageCallback;
 
 private:
 
@@ -70,7 +70,7 @@ __gshared ushort magicNumber;
 
 __gshared UdpSocket socket;
 
-void listener(shared PeerSelf _self, postMessageCallback dg)
+void listener(shared PeerSelf _self, PostMessageCallback dg)
 {
 	PeerSelf self = cast(PeerSelf)_self;
 
@@ -87,12 +87,11 @@ void listener(shared PeerSelf _self, postMessageCallback dg)
 			continue;
 		}
 		
-		//writefln("Received, cmd: %s, from: %s, to: %s, content: %s", packet.cmd, packet.fromPeerId, packet.toPeerId, cast(string)packet.data);
 		handler(self, dg, packet, address);
     }
 }
 
-void handler(PeerSelf self, postMessageCallback dg, Packet packet, Address sourceAddress)
+void handler(PeerSelf self, PostMessageCallback dg, Packet packet, Address sourceAddress)
 {
 	final switch (packet.cmd)
 	{
@@ -111,8 +110,8 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet, Address sourc
 				{
 					PeerOther po = peers[tp[0]];
 					po.natInfo.externalIp = poNew.natInfo.externalIp;
-//					if (po.natInfo.natType != NATType.SymmetricNAT)
-//						po.natInfo.externalPort = poNew.natInfo.externalPort;
+					if (po.natInfo.natType != NATType.SymmetricNAT)
+						po.natInfo.externalPort = poNew.natInfo.externalPort;
 				}
 				else
 				{
@@ -161,12 +160,16 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet, Address sourc
 			}
 			po = peers[packet.fromPeerId];
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHoleForward, self.natInfo.natType, self.peerId, packet.fromPeerId);
-			Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
-			for (int i = 0; i < 3; i++)
+//			Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+//			for (int i = 0; i < 3; i++)
+//			{
+//				socket.sendTo(cast(ubyte[])buffer, address);
+//			}
+			if (!po.hasHole && !po.consulting)
 			{
-				socket.sendTo(cast(ubyte[])buffer, address);
+				spawn!()(&consulting, packet.fromPeerId, cast(shared PeerOther)po, cast(shared ubyte[])buffer);
 			}
-			address = new InternetAddress(trackerHost, trackerPort);
+			Address address = new InternetAddress(trackerHost, trackerPort);
 			socket.sendTo(buffer, address);
 			break;
 		case Cmd.ResponseMakeHoleDirect:
@@ -203,9 +206,8 @@ void reportPeerInfoToServer(shared PeerSelf _self)
 	{
 		for (int i = 0; i < times; i++)
 			socket.sendTo(buffer, address);
-		
-		times++;
-		if (times > 3) times = 3;
+
+		if (times < 3) times++;
 		Thread.sleep(5.seconds);
 	}
 }
@@ -256,6 +258,30 @@ void connectPeers(shared PeerSelf _self)
 		
 		if (times < 60000) times += 5000;
 	}
+}
+
+void consulting(string toPeerId, shared PeerOther po, shared ubyte[] buffer)
+{
+	if (po.hasHole || po.consulting)
+		return;
+
+	SysTime time1 = Clock.currTime();
+	Address address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
+
+	po.consulting = true;
+	
+	while (!peers[toPeerId].hasHole)
+	{
+		socket.sendTo(cast(ubyte[])buffer, address);
+		
+		SysTime time2 = Clock.currTime();
+		if ((time2 - time1).total!"seconds" > 30)
+		{
+			break;
+		}
+	}
+	
+	po.consulting = false;
 }
 
 void heartbeat(shared PeerSelf _self)
@@ -315,7 +341,7 @@ final class PeerSelf : Peer
 		spawn!()(&reportPeerInfoToServer, cast(shared PeerSelf)this);
 	}
 	
-	public bool start(postMessageCallback dg)
+	public bool start(PostMessageCallback dg)
 	{
 		if (!isNatAllow)
 		{
@@ -324,7 +350,7 @@ final class PeerSelf : Peer
 		}
 		
 		writefln("Listening on %s:%d.", natInfo.localIp, natInfo.localPort);
-		spawn!()(&listener,		cast(shared PeerSelf)this, cast(shared postMessageCallback)dg);
+		spawn!()(&listener,		cast(shared PeerSelf)this, cast(shared PostMessageCallback)dg);
 		
 		spawn!()(&getPeers,		cast(shared PeerSelf)this);
 		spawn!()(&connectPeers,	cast(shared PeerSelf)this);
