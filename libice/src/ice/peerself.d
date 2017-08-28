@@ -111,8 +111,8 @@ void handler(PeerSelf self, postMessageCallback dg, Packet packet, Address sourc
 				{
 					PeerOther po = peers[tp[0]];
 					po.natInfo.externalIp = poNew.natInfo.externalIp;
-					if (po.natInfo.natType != NATType.SymmetricNAT)
-						po.natInfo.externalPort = poNew.natInfo.externalPort;
+//					if (po.natInfo.natType != NATType.SymmetricNAT)
+//						po.natInfo.externalPort = poNew.natInfo.externalPort;
 				}
 				else
 				{
@@ -446,12 +446,12 @@ final class PeerSelf : Peer
 		
 		if (po.hasHole)
 		{
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessageDirect, this.natInfo.natType, peerId, toPeerId, data);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessageDirect, this.natInfo.natType, this.peerId, toPeerId, data);
 			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 		}
 		else if (!canMakeHole(po.natInfo.natType))
 		{
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessageForward, this.natInfo.natType, peerId, toPeerId, data);
+			ubyte[] buffer = Packet.build(magicNumber, Cmd.PostMessageForward, this.natInfo.natType, this.peerId, toPeerId, data);
 			socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
 		}
 		else if (consoleMessage) writeln("Error: There is no connection to peer other yet.");

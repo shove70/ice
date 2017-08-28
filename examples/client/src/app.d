@@ -47,8 +47,7 @@ void main()
 		    continue;
 	    }
 		
-		writefln("Sent to all: %s", line);
-		write("Please input: ");
+		writeln("Please input: ");
 		self.broadcastMessage(cast(ubyte[])line);
 	}
 }
@@ -68,11 +67,11 @@ void showMenu()
 	writeln("1. press the \"menu\" to show this menu items.");
 	writeln("2. press a string will be send to all peers.");
 	writeln("3. press \"exit\" to exit the client.");
-	write("Please input: ");
+	writeln("Please input: ");
 }
 
 void onReceive(string fromPeerId, string toPeerId, ubyte[] data, bool isForward)
 {
-	writefln("%s sent to %s%d: %s", fromPeerId, toPeerId, isForward ? "[Forward]" : "", cast(string)data);
+	writefln("%s sent to %s%s: %s", fromPeerId, toPeerId, isForward ? "[Forward]" : "", cast(string)data);
 	writeln("Please input: ");
 }

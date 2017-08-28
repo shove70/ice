@@ -60,14 +60,11 @@ void listener()
 
 private void handler(Packet packet, Address sourceAddress)
 {
-	PeerOther fromPeer = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
-	peers[packet.fromPeerId] = fromPeer;
-	
 	final switch (packet.cmd)
 	{
 		case Cmd.ReportPeerInfo:
-			//PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
-			//peers[packet.fromPeerId] = po;
+			PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
+			peers[packet.fromPeerId] = po;
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, NATType.Uninit, string.init, packet.fromPeerId);
 			socket.sendTo(buffer, sourceAddress);
 			break;
