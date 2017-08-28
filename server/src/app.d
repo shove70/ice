@@ -69,15 +69,23 @@ private void handler(Packet packet, Address sourceAddress)
 			socket.sendTo(buffer, sourceAddress);
 			break;
 		case Cmd.RequestAllPeers:
+			void sendResult(string response)
+			{
+				if (response == string.init) response = ";";
+				ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, NATType.Uninit, string.init, packet.fromPeerId, cast(ubyte[])(response[0..$ - 1]));
+				socket.sendTo(buffer, sourceAddress);
+			}
 			string response;
 			foreach(k, v; peers)
 			{
-				//if (k == packet.fromPeerId) continue;
 				response ~= (k ~ "|" ~ v.serialize ~ ";");
+				if (response.length > 65000)
+				{
+					sendResult(response);
+					response = string.init;
+				}
 			}
-			if (response == string.init) response = ";";
-			ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, NATType.Uninit, string.init, packet.fromPeerId, cast(ubyte[])(response[0..$ - 1]));
-			socket.sendTo(buffer, sourceAddress);
+			sendResult(response);
 			break;
 		case Cmd.PostMessageDirect:
 		case Cmd.PostMessageForward:
