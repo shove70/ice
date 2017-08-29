@@ -157,6 +157,7 @@ class IceClient
 	{
 		writeln("Testing the NAT info...");
 		
+		InternetHost ih = new InternetHost();
 		this._natInfo = natInfo;
 		
 		_natInfo.localIp = _socket.localAddress().toAddrString();
@@ -167,6 +168,11 @@ class IceClient
 		bool testOK = false;
 		foreach(StunServer server; _stunServerList)
 		{
+			if (!ih.getHostByName(server.host))
+			{
+				continue;
+			}
+
 			stunServer = server.host;
 			stunPort = server.port;
 
@@ -175,6 +181,16 @@ class IceClient
 				testOK = true;
 				break;
 			}
+		}
+
+		if (stunServer == string.init)
+		{
+			_natInfo.natType = NATType.Uninit;
+			writeln("Error.");
+			writeln("NAT type: ", _natInfo.natType);
+			writeln("No valid stunservers.");
+			
+			return;
 		}
 
 		if (!testOK)

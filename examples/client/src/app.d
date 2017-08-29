@@ -12,8 +12,9 @@ void main()
 {
 	writeln("ice client.");
 	
-	self = new PeerSelf();
+	self = new PeerSelf(false);	// when false: Each run is assigned a new peerId
 	self.autoConnectPeerOthers = true;
+	
 	self.start(
 		(string fromPeerId, string toPeerId, ubyte[] data, bool isForward)
 		{

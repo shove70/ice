@@ -46,34 +46,36 @@ void listener()
     	Address address = new InternetAddress(InternetAddress.ADDR_ANY, InternetAddress.PORT_ANY);
     	
 	    ubyte[] buffer = new ubyte[65507];
-    	socket.receiveFrom(buffer, address);	    	
-    	Nullable!Packet packet = Packet.parse(magicNumber, buffer);
-	
-		if (packet.isNull)
-		{
-			continue;
-		}
-
-		handler(packet, address);
+    	socket.receiveFrom(buffer, address);
+    	spawn!()(&handler, cast(shared ubyte[])buffer, cast(shared Address)address);
     }
 }
 
-private void handler(Packet packet, Address sourceAddress)
+private void handler(shared ubyte[] _receiveData, shared Address _address)
 {
+	ubyte[] receiveData = cast(ubyte[])_receiveData;
+	Address address		= cast(Address)_address;
+	Nullable!Packet packet = Packet.parse(magicNumber, receiveData);
+
+	if (packet.isNull)
+	{
+		return;
+	}
+	
 	final switch (packet.cmd)
 	{
 		case Cmd.ReportPeerInfo:
-			PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, sourceAddress);
+			PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, address);
 			peers[packet.fromPeerId] = po;
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ReportPeerInfo, NATType.Uninit, string.init, packet.fromPeerId);
-			socket.sendTo(buffer, sourceAddress);
+			socket.sendTo(buffer, address);
 			break;
 		case Cmd.RequestAllPeers:
 			void sendResult(string response)
 			{
 				if (response == string.init) response = ";";
 				ubyte[] buffer = Packet.build(magicNumber, Cmd.RequestAllPeers, NATType.Uninit, string.init, packet.fromPeerId, cast(ubyte[])(response[0..$ - 1]));
-				socket.sendTo(buffer, sourceAddress);
+				socket.sendTo(buffer, address);
 			}
 			string response;
 			foreach(k, v; peers)
@@ -110,7 +112,7 @@ private void handler(Packet packet, Address sourceAddress)
 			break;
 		case Cmd.Heartbeat:
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, NATType.Uninit, string.init, string.init);	// minimize it.
-			socket.sendTo(buffer, sourceAddress);
+			socket.sendTo(buffer, address);
 			break;
 	}
 }

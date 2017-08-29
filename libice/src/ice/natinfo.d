@@ -40,6 +40,32 @@ struct NATInfo
 		localIp = "0.0.0.0";
 		localPort = 0;
 	}
+	
+	@property bool natUsable()
+	{
+		int type = natType;
+		return ((type >= 0) && (type <= 4));
+	}
+
+	bool canMakeHole(NATInfo poInfo)
+	{
+		if (!natUsable || !poInfo.natUsable)
+			return false;
+		
+		if (natType == NATType.RestrictPortNAT)
+		{
+			if (poInfo.natType == NATType.SymmetricNAT)
+				return false;
+		}
+		
+		if (natType == NATType.SymmetricNAT)
+		{
+			if ((poInfo.natType == NATType.RestrictPortNAT) || (poInfo.natType == NATType.SymmetricNAT))
+				return false;
+		}
+		
+		return true;
+	}
 
 //	string toString()
 //	{
