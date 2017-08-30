@@ -9,6 +9,7 @@ import std.concurrency;
 import std.socket;
 import std.bitmanip;
 import std.typecons;
+import std.datetime;
 
 import ice.all;
 
@@ -111,6 +112,11 @@ private void handler(shared ubyte[] _receiveData, shared Address _address)
 			socket.sendTo(buffer, new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort));
 			break;
 		case Cmd.Heartbeat:
+			if ((packet.fromPeerId != string.init) && (packet.fromPeerId in peers))
+			{
+				PeerOther po = peers[packet.fromPeerId];
+				po.lastHeartbeat = cast(DateTime)Clock.currTime();
+			}
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, NATType.Uninit, string.init, string.init);	// minimize it.
 			socket.sendTo(buffer, address);
 			break;

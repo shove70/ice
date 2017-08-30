@@ -94,6 +94,30 @@ void handler(shared PeerSelf _self, shared PostMessageCallback dg, shared ubyte[
 	{
 		return;
 	}
+	
+	PeerOther parsePeerOther(Packet packet, Address address = null)
+	{
+		PeerOther po = (address is null)
+						?
+						new PeerOther(packet.fromPeerId, packet.data)
+						:
+						new PeerOther(packet.fromPeerId, packet.fromNatType, address);
+		if (packet.fromPeerId !in peers)
+		{
+			peers[packet.fromPeerId] = po;
+		}
+		po = peers[packet.fromPeerId];
+		return po;
+	}
+
+	void updateNatInfoForSymmetric(PeerOther po)
+	{
+		if (po.natInfo.natType == NATType.SymmetricNAT)
+		{
+			po.natInfo.externalIp = address.toAddrString();
+			po.natInfo.externalPort = address.toPortString().to!ushort;
+		}
+	}
 
 	final switch (packet.cmd)
 	{
@@ -111,6 +135,7 @@ void handler(shared PeerSelf _self, shared PostMessageCallback dg, shared ubyte[
 				if (tp[0] in peers)
 				{
 					PeerOther po = peers[tp[0]];
+					po.natInfo.natType = poNew.natInfo.natType;
 					po.natInfo.externalIp = poNew.natInfo.externalIp;
 					if (po.natInfo.natType != NATType.SymmetricNAT)
 						po.natInfo.externalPort = poNew.natInfo.externalPort;
@@ -122,12 +147,7 @@ void handler(shared PeerSelf _self, shared PostMessageCallback dg, shared ubyte[
 			}
 			break;
 		case Cmd.PostMessageDirect:
-			PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, address);
-			if (packet.fromPeerId !in peers)
-			{
-				peers[packet.fromPeerId] = po;
-			}
-			po = peers[packet.fromPeerId];
+			PeerOther po = parsePeerOther(packet, address);
 			po.hasHole = true;
 			dg(packet.fromPeerId, packet.toPeerId, packet.data, false);
 			break;
@@ -135,18 +155,9 @@ void handler(shared PeerSelf _self, shared PostMessageCallback dg, shared ubyte[
 			dg(packet.fromPeerId, packet.toPeerId, packet.data, true);
 			break;
 		case Cmd.RequestMakeHoleDirect:
-			PeerOther po = new PeerOther(packet.fromPeerId, packet.data);
-			if (packet.fromPeerId !in peers)
-			{
-				peers[packet.fromPeerId] = po;
-			}
-			po = peers[packet.fromPeerId];
+			PeerOther po = parsePeerOther(packet);
 			po.hasHole = true;
-			if (po.natInfo.natType == NATType.SymmetricNAT)
-			{
-				po.natInfo.externalIp = address.toAddrString();
-				po.natInfo.externalPort = address.toPortString().to!ushort;
-			}
+			updateNatInfoForSymmetric(po);
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHoleDirect, self.natInfo.natType, self.peerId, packet.fromPeerId);
 			Address addr = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
 			for (int i = 0; i < 3; i++)
@@ -155,12 +166,7 @@ void handler(shared PeerSelf _self, shared PostMessageCallback dg, shared ubyte[
 			}
 			break;
 		case Cmd.RequestMakeHoleForward:
-			PeerOther po = new PeerOther(packet.fromPeerId, packet.data);
-			if (packet.fromPeerId !in peers)
-			{
-				peers[packet.fromPeerId] = po;
-			}
-			po = peers[packet.fromPeerId];
+			PeerOther po = parsePeerOther(packet);
 			ubyte[] buffer = Packet.build(magicNumber, Cmd.ResponseMakeHoleForward, self.natInfo.natType, self.peerId, packet.fromPeerId);
 			if (!po.hasHole && !po.consulting)
 			{
@@ -169,22 +175,20 @@ void handler(shared PeerSelf _self, shared PostMessageCallback dg, shared ubyte[
 			socket.sendTo(buffer, new InternetAddress(trackerHost, trackerPort));
 			break;
 		case Cmd.ResponseMakeHoleDirect:
-			PeerOther po = new PeerOther(packet.fromPeerId, packet.fromNatType, address);
-			if (packet.fromPeerId !in peers)
-			{
-				peers[packet.fromPeerId] = po;
-			}
-			po = peers[packet.fromPeerId];
+			PeerOther po = parsePeerOther(packet, address);
 			po.hasHole = true;
-			if (po.natInfo.natType == NATType.SymmetricNAT)
-			{
-				po.natInfo.externalIp = address.toAddrString();
-				po.natInfo.externalPort = address.toPortString().to!ushort;
-			}
+			updateNatInfoForSymmetric(po);
 			break;
 		case Cmd.ResponseMakeHoleForward:
 			break;
 		case Cmd.Heartbeat:
+			if (packet.fromPeerId != string.init)
+			{
+				PeerOther po = parsePeerOther(packet);
+				po.hasHole = true;
+				updateNatInfoForSymmetric(po);
+				po.lastHeartbeat = cast(DateTime)Clock.currTime();
+			}
 			break;
 	}
 }
@@ -283,14 +287,16 @@ void consulting(string toPeerId, shared PeerOther po, shared ubyte[] buffer)
 void heartbeat(shared PeerSelf _self)
 {
 	PeerSelf self = cast(PeerSelf)_self;
-	ubyte[] buffer = Packet.build(magicNumber, Cmd.Heartbeat, self.natInfo.natType, string.init, string.init);	// minimize it.
+	ubyte[] buffer1 = Packet.build(magicNumber, Cmd.Heartbeat, self.natInfo.natType, string.init, string.init);	// minimize it.
+	ubyte[] buffer2 = Packet.build(magicNumber, Cmd.Heartbeat, self.natInfo.natType, self.peerId, string.init);	// minimize it.
 	
+	int count = 0;
 	while (true)
 	{
 		Thread.sleep(10.seconds);
 		
 		Address address = new InternetAddress(trackerHost, trackerPort);
-		socket.sendTo(buffer, address);
+		socket.sendTo((count == 59) ? buffer2 : buffer1, address);
 		
 		if (self.natInfo.natUsable)
 		{
@@ -300,9 +306,12 @@ void heartbeat(shared PeerSelf _self)
 					continue;
 					
 				address = new InternetAddress(po.natInfo.externalIp, po.natInfo.externalPort);
-				socket.sendTo(buffer, address);
+				socket.sendTo((count == 59) ? buffer2 : buffer1, address);
 			}
 		}
+		
+		count++;
+		count %= 60;
 	}
 }
 
@@ -431,6 +440,8 @@ final class PeerSelf : Peer
 		{
 			socket.sendTo(buffer, address);
 		}
+		
+		po.tryConnectTimes++;
 		
 		if (consoleMessage) writefln("Consult to %s to make a hole...", peerId);
 	}
