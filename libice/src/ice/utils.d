@@ -7,6 +7,7 @@ import std.string;
 import std.digest.md;
 import std.file;
 import std.array;
+import std.socket;
 
 import cryption.tea.xtea;
 
@@ -80,10 +81,74 @@ public string ipFromLong(long ipInt)
 	);
 }
 
+public string getLocalIpAddress()
+{
+	import core.stdc.stdlib;
+	
+	int ret;
+	
+	version(Posix)
+	{
+		import core.sys.posix.unistd;
+		import core.sys.posix.netdb;
+	}
+	else version(Windows)
+	{
+		import core.sys.windows.winsock2;
+		
+		WSADATA wsaData;  
+		ret = WSAStartup(MAKEWORD(2, 2), &wsaData);  
+		if (ret != 0)  
+		{  
+			writeln("Error.");
+			returnstring.init;  
+		}
+	}
+	
+	char* hostname = cast(char*)malloc(1024 + 1);		
+	ret = gethostname(hostname, 1024);
+	
+	if (ret < 0)
+	{
+		version(Windows) { WSACleanup( ); }
+		return string.init;
+	}
+	
+	string hostName = cast(string)fromStringz(hostname);
+	delete hostname;
+	
+	AddressInfo[] ai = getAddressInfo(hostName);
+	foreach(AddressInfo addr; ai)
+	{
+		if (addr.family == AddressFamily.INET)
+		{
+			if (isLanIpAddress(addr.address.toAddrString()))
+				return addr.address.toAddrString();
+		}
+	}
+	
+	return string.init;
+}
+
 public bool isLoopbackIpAddress(string ip) //127.0.0.1 -> 127.255.255.254
 {
 	long ipLong = ipToLong(ip);
 	return ((ipLong >= 2130706433) && (ipLong <= 2147483646));
+}
+
+public bool isLanIpAddress(string ip)
+{
+	/*
+	A 10.0.0.0		--	10.255.255.255
+	B 172.16.0.0	--	172.31.255.255
+	C 192.168.0.0	--	192.168.255.255
+	*/
+	long ipLong = ipToLong(ip);
+	return (
+		((ipLong >= 167772160)  && (ipLong <= 184549375)) ||
+		((ipLong >= 2886729728) && (ipLong <= 2887778303)) ||
+		((ipLong >= 3232235520) && (ipLong <= 3232301055))
+	);
 }
 
 public alias xtea!(Xtea.encrypt) xteaEncrypt;

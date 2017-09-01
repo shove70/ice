@@ -1,0 +1,10 @@
+1. Stunserver requires two network adapters and IP addresses.
+
+2. server firewall setting:
+	open the 3478/3479 tcp/udp ports.
+
+3. help & start:
+	./stunserver --help
+	nohup ./stunserver --mode basic --primaryinterface eth0 &
+	or: nohup ./stunserver --mode full --primaryinterface eth0 --altinterface eth1 &
+	
