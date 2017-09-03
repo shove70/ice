@@ -8,6 +8,7 @@ import std.digest.md;
 import std.file;
 import std.array;
 import std.socket;
+import std.datetime;
 
 import cryption.tea.xtea;
 
@@ -161,4 +162,16 @@ public ubyte[] xtea(alias T)(ubyte[] input, string key)
 	int rounds = 64;
 	
 	return T(input, bkey, rounds, true);
+}
+
+private long TICK_BASE = 1460004240;
+
+public long currTimeTick()
+{
+	return Clock.currTime().toUnixTime() - TICK_BASE;
+}
+
+public SysTime currTimeFromTick(long tick)
+{
+	return SysTime.fromUnixTime(tick + TICK_BASE);
 }

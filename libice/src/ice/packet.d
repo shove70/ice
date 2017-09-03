@@ -7,7 +7,7 @@ import std.string;
 import std.conv;
 import std.typecons;
 
-import ice.utils, ice.natinfo;
+import ice.utils, ice.natinfo, ice.peerother;
 
 enum Cmd
 {
@@ -17,41 +17,49 @@ enum Cmd
 	PostMessageForward			= 4,
 	RequestMakeHoleDirect		= 5,
 	RequestMakeHoleForward		= 6,
-	ResponseMakeHoleDirect		= 7,
-	ResponseMakeHoleForward		= 8,
-	Heartbeat					= 9
+	ResponseMakeHole			= 7,
+	Heartbeat					= 8
 }
 
 /**
 protocol rule (TLV):
-	magic_number(ushort) ~ total_len(ushort) ~ cmd(byte) ~ sender_nattype(byte) ~ len(byte)+from(string) ~ len(byte)+to(string) ~ len(ushort)+data(string) ~ ushort(hash(all)[0..4])
-	
-	cmd:
-	
-	1: report a peer info (for client self)	-> server reply: 1,"",to,""
-	2: request all peers from server.		-> server reply: 2,"",to,"id|info;id|info;..."
-	3: postmessage(direct send)				-> none
-	4: postmessage(forward)					-> server forward: 4,from,to,data
-	5: request make hole(direct)			-> peerother reply peer: 7
-	6: request make hole(forward)			-> server forward: 6,from,to,data -> peerother reply(two):	-> peer:   7
-																										-> server: 7 -> server to peer: 8
-	9: heartbeat							-> none
+
+magic_number(ushort) ~ total_len(ushort) ~ cmd(byte) ~ sender_nattype(byte) ~ len(byte)+senderId(string) ~ len(byte)+po_serialize(ubyte[]) ~ len(ushort)+data(string) ~ ushort(hash(all)[0..4])
+
+cmd:
+
+1: report a peer info (for client self): 1,nat,id,"",""		-> server reply:	1,"","","",""
+2: request all peers from server.      : 2,nat,id,"","" 	-> server reply:	2,"","","",len~serialize...
+3: postmessage(direct send)            : 3,nat,id,"",data	-> none
+4: postmessage(forward)                : 4,nat,id,po,data	-> server forward:	4,"","",po,data [exchange po]
+5: request make hole(direct)           : 5,nat,id,"",""		-> po reply peer:	7,nat,id,"",""
+6: request make hole(forward)          : 6,nat,id,po,""		-> server forward:	6,"","",po,""	[exchange po] -> po reply: -> peer: 7,nat,id,"",""
+8: heartbeat(two)                      : 8,nat,id,"",""		-> none
+                                       : magic_number
 */
 
 struct Packet
 {
-	Cmd cmd;
-	NATType fromNatType;
-	string fromPeerId;
-	string toPeerId;
-	ubyte[] data;
+	Cmd			cmd;
+	NATType		senderNatType;
+	string		senderPeerId;
+	PeerOther	additionalPo;
+	ubyte[]		data;
 	
-	static ubyte[] build(ushort magicNumber, Cmd cmd, NATType fromNatType, string fromPeerId, string toPeerId, ubyte[] data = null)
+	static ubyte[] build(ushort magicNumber)	// for heartbeat
 	{
-		ubyte[] from_buf = cast(ubyte[])fromPeerId;
-		ubyte[] to_buf = cast(ubyte[])toPeerId;
+		ubyte[] buffer = new ubyte[2];
+		buffer.write!ushort(magicNumber, 0);
+		
+		return buffer;
+	}
+	
+	static ubyte[] build(ushort magicNumber, Cmd cmd, NATType senderNatType = NATType.Uninit, string senderPeerId = string.init, PeerOther additionalPo = null, ubyte[] data = null)
+	{
+		ubyte[] sender_buf = cast(ubyte[])senderPeerId;
+		ubyte[] additional_buf = (additionalPo is null) ? new ubyte[0] : additionalPo.serialize;
 		ubyte[] data_buf = cast(ubyte[])data;
-		ulong total_len = from_buf.length + to_buf.length + data_buf.length + 7;
+		ulong total_len = sender_buf.length + additional_buf.length + data_buf.length + 7;
 		
 		assert(total_len <= 65503);
 		
@@ -61,13 +69,13 @@ struct Packet
 		
 		int icmd = cmd;
 		buffer ~= cast(ubyte)icmd;
-		int itype = fromNatType;
+		int itype = senderNatType;
 		buffer ~= cast(ubyte)itype;
 		
-		buffer ~= cast(ubyte)(from_buf.length);
-		buffer ~= from_buf;
-		buffer ~= cast(ubyte)(to_buf.length);
-		buffer ~= to_buf;
+		buffer ~= cast(ubyte)(sender_buf.length);
+		buffer ~= sender_buf;
+		buffer ~= cast(ubyte)(additional_buf.length);
+		buffer ~= additional_buf;
 		buffer ~= cast(ubyte)(data_buf.length);
 		buffer ~= data_buf;
 		buffer ~= strToByte_hex(MD5(buffer)[0..4]);
@@ -77,9 +85,28 @@ struct Packet
 
 	static Nullable!Packet parse(ushort magicNumber, ubyte[] buffer)
 	{
-		assert(buffer.length >= 10);
-		
 		ushort t_magic, t_len, t_crc;
+		Packet packet;
+
+		if (buffer.length == 2)	// for heartbeat
+		{
+			t_magic = buffer.peek!ushort(0);
+			
+			if (t_magic != magicNumber)
+			{
+				return Nullable!Packet();
+			}
+			
+			packet.cmd = Cmd.Heartbeat;
+			
+			return Nullable!Packet(packet);
+		}
+		
+		if (buffer.length < 11)
+		{
+			return Nullable!Packet();
+		}
+		
 		t_magic = buffer.peek!ushort(0);
 		t_len = buffer.peek!ushort(2);
 		
@@ -97,18 +124,20 @@ struct Packet
 		}
 
 		buffer = buffer[4..$ - 2];
-		Packet packet;
 		
 		packet.cmd = cast(Cmd)(buffer[0]);
-		packet.fromNatType = cast(NATType)(buffer[1]);
+		packet.senderNatType = cast(NATType)(buffer[1]);
 		buffer = buffer[2..$];
 		
 		t_len = buffer[0];
-		packet.fromPeerId = cast(string)buffer[1..t_len + 1];
+		packet.senderPeerId = cast(string)buffer[1..t_len + 1];
 		buffer = buffer[1 + t_len..$];
 		
 		t_len = buffer[0];
-		packet.toPeerId = cast(string)buffer[1..t_len + 1];
+		if (t_len > 0)
+		{
+			packet.additionalPo = new PeerOther(buffer[1..t_len + 1]);
+		}
 		buffer = buffer[1 + t_len..$];
 		
 		t_len = buffer[0];

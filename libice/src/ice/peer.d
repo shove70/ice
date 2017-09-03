@@ -12,7 +12,7 @@ abstract class Peer
 	public string peerId;
 	public NATInfo natInfo;
 	
-	public string serialize()
+	public ubyte[] serialize()
 	{
 		int offset = 0;
 		ubyte[] buffer = new ubyte[int.sizeof + long.sizeof + ushort.sizeof];
@@ -22,19 +22,14 @@ abstract class Peer
 		buffer.write!long(ipToLong(natInfo.externalIp), offset);
 		offset += long.sizeof;
 		buffer.write!ushort(natInfo.externalPort, offset);
+		buffer ~= cast(ubyte[])peerId;
 
-		return Base58.encode(cast(byte[])buffer);
+		return buffer;
 	}
 	
-	void deserialize(ubyte[] serializedBuffer)
-	{
-		deserialize(cast(string)serializedBuffer);
-	}
-	
-	void deserialize(string serializedString)
+	void deserialize(ubyte[] buffer)
 	{
 		natInfo.reset();
-		ubyte[] buffer = cast(ubyte[])Base58.decode(serializedString);
 		int offset = 0;
 		
 		natInfo.natType = cast(NATType)(buffer.peek!int(offset));
@@ -42,6 +37,8 @@ abstract class Peer
 		natInfo.externalIp = ipFromLong(buffer.peek!long(offset));
 		offset += long.sizeof;
 		natInfo.externalPort = buffer.peek!ushort(offset);
+		offset += ushort.sizeof;
+		peerId = cast(string)buffer[offset..$];
 	}
 	
 	protected bool verifyPeerId(string input)

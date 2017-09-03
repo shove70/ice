@@ -16,9 +16,9 @@ void main()
 	self.autoConnectPeerOthers = true;
 	
 	self.start(
-		(string fromPeerId, string toPeerId, ubyte[] data, bool isForward)
+		(string fromPeerId, ubyte[] data, bool isForward)
 		{
-			onReceive(fromPeerId, toPeerId, data, isForward);
+			onReceive(fromPeerId, data, isForward);
 		}
 	);
 	
@@ -36,6 +36,7 @@ void main()
 			
 		if (line == "exit")
 		{
+			self.savePeers();
 			writeln("bye.\n");
 			import core.stdc.stdlib;
 			exit(0);
@@ -71,7 +72,7 @@ void showMenu()
 	writeln("Please input: ");
 }
 
-void onReceive(string fromPeerId, string toPeerId, ubyte[] data, bool isForward)
+void onReceive(string fromPeerId, ubyte[] data, bool isForward)
 {
 	writefln("%s%s: %s", fromPeerId, isForward ? "[Forward]" : "", cast(string)data);
 	writeln("Please input: ");

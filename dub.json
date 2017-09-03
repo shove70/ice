@@ -15,5 +15,8 @@
 	],
 	"dependencies" : {
 		"cryption": "~>0.0.7"
-	}
+	},
+	"libs" : [
+		"sqlite3"
+	]
 }

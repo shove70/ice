@@ -2,34 +2,32 @@ module ice.peerother;
 
 import std.socket;
 import std.conv;
-import std.datetime;
 
-import ice.peer, ice.natinfo;
+import ice.utils, ice.peer, ice.natinfo;
 
 final class PeerOther : Peer
 {
 	public bool hasHole = false;
 	public bool consulting = false;
-	public DateTime discoveryTime;
+	public long discoveryTime = 0;
 	public int tryConnectTimes = 0;
-	public DateTime lastHeartbeat;
+	public long lastHeartbeat = 0;
 	
-	this(string peerId, ubyte[] serializedBuffer)
-	{
-		this(peerId, cast(string)serializedBuffer);
-	}
-	
-	this(string peerId, string serializedString)
+	this(string peerId)
 	{
 		this.peerId = peerId;
-		discoveryTime = cast(DateTime)Clock.currTime();
-		deserialize(serializedString);
+	}
+	
+	this(ubyte[] serializedBuffer)
+	{
+		deserialize(serializedBuffer);
+		discoveryTime = currTimeTick;
 	}
 	
 	this(string peerId, NATType natType, Address address)
 	{
 		this.peerId = peerId;
-		discoveryTime = cast(DateTime)Clock.currTime();
+		discoveryTime = currTimeTick;
 		
 		this.natInfo.natType = natType;
 		this.natInfo.externalIp = address.toAddrString();
