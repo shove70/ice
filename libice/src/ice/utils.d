@@ -64,14 +64,14 @@ public long ipToLong(string ip)
 	return r;
 }
 
-public string ipFromLong(long ipInt)
+public string ipFromLong(long ipLong)
 {
 	string[4] part;
 	
 	for (int i = 3; i >= 0; i--)
 	{
-		part[i] = to!string(ipInt % 256);
-		ipInt /= 256;
+		part[i] = to!string(ipLong % 256);
+		ipLong /= 256;
 	}
 	
 	return join([
@@ -108,10 +108,10 @@ public string getLocalIpAddress()
 	
 	char* hostname = cast(char*)malloc(1024 + 1);		
 	ret = gethostname(hostname, 1024);
+	version(Windows) { WSACleanup(); }
 	
 	if (ret < 0)
 	{
-		version(Windows) { WSACleanup( ); }
 		return string.init;
 	}
 	
@@ -124,7 +124,9 @@ public string getLocalIpAddress()
 		if (addr.family == AddressFamily.INET)
 		{
 			if (isLanIpAddress(addr.address.toAddrString()))
+			{
 				return addr.address.toAddrString();
+			}
 		}
 	}
 	
@@ -164,7 +166,7 @@ public ubyte[] xtea(alias T)(ubyte[] input, string key)
 	return T(input, bkey, rounds, true);
 }
 
-private long TICK_BASE = 1460004240;
+private const long TICK_BASE = 1460004240;
 
 public long currTimeTick()
 {
