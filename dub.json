@@ -2,7 +2,7 @@
 	"authors": ["Shove"],
 	"name" : "ice",
 	"description" : "NAT, stun, turn and ice.",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"license": "MIT License",
 	"copyright": "Copyright © 2017, Shove",
 	"targetType": "library",
@@ -14,6 +14,6 @@
 		"libice/src"
 	],
 	"dependencies" : {
-		"cryption": "~>0.0.8"
+		"cryption": "~>0.0.9"
 	}
 }
