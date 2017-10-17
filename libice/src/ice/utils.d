@@ -154,18 +154,6 @@ public bool isLanIpAddress(string ip)
 	);
 }
 
-public alias xtea!(Xtea.encrypt) xteaEncrypt;
-public alias xtea!(Xtea.decrypt) xteaDecrypt;
-
-public ubyte[] xtea(alias T)(ubyte[] input, string key)
-{
-	ubyte[] buf = cast(ubyte[])key;
-	int[4] bkey = [buf[0], buf[1], buf[2], buf[3]];
-	int rounds = 64;
-	
-	return T(input, bkey, rounds, true);
-}
-
 private const long TICK_BASE = 1460004240;
 
 public long currTimeTick()
