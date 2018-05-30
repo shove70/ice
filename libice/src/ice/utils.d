@@ -10,7 +10,7 @@ import std.array;
 import std.socket;
 import std.datetime;
 
-import cryption.tea.xtea;
+import crypto.tea.xtea;
 
 public string genUuid()
 {
@@ -116,7 +116,7 @@ public string getLocalIpAddress()
 	}
 	
 	string hostName = cast(string)fromStringz(hostname);
-	delete hostname;
+	hostname.destroy();
 	
 	AddressInfo[] ai = getAddressInfo(hostName);
 	foreach(AddressInfo addr; ai)

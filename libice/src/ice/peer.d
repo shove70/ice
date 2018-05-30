@@ -3,7 +3,7 @@ module ice.peer;
 import std.conv;
 import std.bitmanip;
 
-import cryption.base58;
+import crypto.base58;
 
 import ice.utils, ice.natinfo;
 

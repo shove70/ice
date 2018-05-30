@@ -11,7 +11,7 @@ import std.datetime;
 import core.thread;
 import std.concurrency;
 
-import cryption.base58;
+import crypto.base58;
 
 import ice.peer, ice.peerother, ice.utils, ice.stunserver, ice.iceclient, ice.natinfo, ice.packet;
 
