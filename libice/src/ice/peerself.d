@@ -84,9 +84,9 @@ void listener(shared PeerSelf _self, shared PostMessageCallback dg)
 
 void handler(shared PeerSelf _self, shared PostMessageCallback dg, shared ubyte[] _receiveData, shared Address _address)
 {
-    PeerSelf self        = cast(PeerSelf)    _self;
-    ubyte[] receiveData    = cast(ubyte[])        _receiveData;
-    Address address        = cast(Address)        _address;
+    PeerSelf self        = cast(PeerSelf)_self;
+    ubyte[]  receiveData = cast(ubyte[]) _receiveData;
+    Address  address     = cast(Address) _address;
 
     Nullable!Packet packet = Packet.parse(magicNumber, receiveData);
 
@@ -641,8 +641,8 @@ final class PeerSelf : Peer
         {
             JSONValue j = ["id": "", "t": "0", "ei": "", "ep": "0", "li": "", "lp": "0", "dt": "0", "ht": "0", "tt": "0"];
             j["id"].str        = po.peerId;
-            int type        = po.natInfo.natType;
-            j["t"].integer    = type;
+            int type           = po.natInfo.natType;
+            j["t"].integer     = type;
             j["ei"].str        = po.natInfo.externalIp;
             j["ep"].integer    = po.natInfo.externalPort;
             j["li"].str        = po.natInfo.localIp;
