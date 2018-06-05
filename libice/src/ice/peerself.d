@@ -396,12 +396,12 @@ final class PeerSelf : Peer
         }
 
         writefln("Listening on %s:%d.", natInfo.localIp, natInfo.localPort);
-        spawn!()(&listener,                        cast(shared PeerSelf)this, cast(shared PostMessageCallback)dg);
+        spawn!()(&listener,                  cast(shared PeerSelf)this, cast(shared PostMessageCallback)dg);
 
-        spawn!()(&getPeers,                        cast(shared PeerSelf)this);
-        spawn!()(&ice.peerself.connectPeers,    cast(shared PeerSelf)this);
-        spawn!()(&heartbeat,                    cast(shared PeerSelf)this);
-        spawn!()(&ice.peerself.savePeers,        cast(shared PeerSelf)this);
+        spawn!()(&getPeers,                  cast(shared PeerSelf)this);
+        spawn!()(&ice.peerself.connectPeers, cast(shared PeerSelf)this);
+        spawn!()(&heartbeat,                 cast(shared PeerSelf)this);
+        spawn!()(&ice.peerself.savePeers,    cast(shared PeerSelf)this);
 
         return true;
     }
