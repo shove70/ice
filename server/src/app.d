@@ -245,8 +245,8 @@ private void savePeers()
         {
             JSONValue j = ["id": "", "t": "0", "ei": "", "ep": "0", /*"li": "", "lp": "0", */"dt": "0", "ht": "0"];
             j["id"].str        = po.peerId;
-            int type        = po.natInfo.natType;
-            j["t"].integer    = type;
+            int type           = po.natInfo.natType;
+            j["t"].integer     = type;
             j["ei"].str        = po.natInfo.externalIp;
             j["ep"].integer    = po.natInfo.externalPort;
             //j["li"].str        = po.natInfo.localIp;
