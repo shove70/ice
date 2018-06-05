@@ -5,7 +5,7 @@
 	"name": "client",
 	"targetType": "executable",
 	"license": "MIT License",
-	"copyright": "Copyright © 2017, Shove",
+	"copyright": "Copyright © 2018, Shove",
 	"targetName": "client",
 	"description": "a example client for NAT, stun, turn and ice.",
 	"dependencies" : {
