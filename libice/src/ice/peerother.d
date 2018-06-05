@@ -7,11 +7,11 @@ import ice.utils, ice.peer, ice.natinfo;
 
 final class PeerOther : Peer
 {
-    public bool hasHole = false;
-    public bool consulting = false;
-    public long discoveryTime = 0;
+    public bool hasHole        = false;
+    public bool consulting     = false;
+    public long discoveryTime  = 0;
     public int tryConnectTimes = 0;
-    public long lastHeartbeat = 0;
+    public long lastHeartbeat  = 0;
 
     this(string peerId)
     {

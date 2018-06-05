@@ -14,27 +14,27 @@ class IceClient
     const
     {
         string MappedAddress                = "0001";
-        string ResponseAddress                = "0002";
+        string ResponseAddress              = "0002";
         string ChangeRequest                = "0003";
         string SourceAddress                = "0004";
-        string ChangedAddress                = "0005";
-        string Username                        = "0006";
-        string Password                        = "0007";
-        string MessageIntegrity                = "0008";
+        string ChangedAddress               = "0005";
+        string Username                     = "0006";
+        string Password                     = "0007";
+        string MessageIntegrity             = "0008";
         string ErrorCode                    = "0009";
-        string UnknownAttribute                = "000A";
+        string UnknownAttribute             = "000A";
         string ReflectedFrom                = "000B";
-        string XorOnly                        = "0021";
-        string XorMappedAddress                = "8020";
-        string ServerName                    = "8022";
-        string SecondaryAddress                = "8050";  // Non standard extention
+        string XorOnly                      = "0021";
+        string XorMappedAddress             = "8020";
+        string ServerName                   = "8022";
+        string SecondaryAddress             = "8050";  // Non standard extention
 
         // types for a stun message
-        string BindRequestMsg                = "0001";
-        string BindResponseMsg                = "0101";
-        string BindErrorResponseMsg            = "0111";
-        string SharedSecretRequestMsg        = "0002";
-        string SharedSecretResponseMsg        = "0102";
+        string BindRequestMsg               = "0001";
+        string BindResponseMsg              = "0101";
+        string BindErrorResponseMsg         = "0111";
+        string SharedSecretRequestMsg       = "0002";
+        string SharedSecretResponseMsg      = "0102";
         string SharedSecretErrorResponseMsg = "0112";
     }
 

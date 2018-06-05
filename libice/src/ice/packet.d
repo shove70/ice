@@ -42,8 +42,8 @@ struct Packet
 {
     Cmd            cmd;
     NATType        senderNatType;
-    string        senderPeerId;
-    PeerOther    additionalPo;
+    string         senderPeerId;
+    PeerOther      additionalPo;
     ubyte[]        data;
 
     static ubyte[] build(ushort magicNumber)    // for heartbeat
