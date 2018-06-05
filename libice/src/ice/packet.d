@@ -28,12 +28,12 @@ magic_number(ushort) ~ total_len(ushort) ~ cmd(byte) ~ sender_nattype(byte) ~ le
 
 cmd:
 
-1: report a peer info (for client self): 1,nat,id,"",""        -> server reply:    1,"","","",""
-2: request all peers from server.      : 2,nat,id,"",""     -> server reply:    2,"","","",len~serialize...
-3: postmessage(direct send)            : 3,nat,id,"",data    -> none
-4: postmessage(forward)                : 4,nat,id,po,data    -> server forward:    4,"","",po,data [exchange po]
+1: report a peer info (for client self): 1,nat,id,"",""        -> server reply:     1,"","","",""
+2: request all peers from server.      : 2,nat,id,"",""        -> server reply:     2,"","","",len~serialize...
+3: postmessage(direct send)            : 3,nat,id,"",data      -> none
+4: postmessage(forward)                : 4,nat,id,po,data      -> server forward:   4,"","",po,data [exchange po]
 5: request make hole(direct)           : 5,nat,id,"",""        -> po reply peer:    7,nat,id,"",""
-6: request make hole(forward)          : 6,nat,id,po,""        -> server forward:    6,"","",po,""    [exchange po] -> po reply: -> peer: 7,nat,id,"",""
+6: request make hole(forward)          : 6,nat,id,po,""        -> server forward:   6,"","",po,""   [exchange po] -> po reply: -> peer: 7,nat,id,"",""
 8: heartbeat(two)                      : 8,nat,id,"",""        -> none
                                        : magic_number
 */
