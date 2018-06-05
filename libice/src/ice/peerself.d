@@ -607,14 +607,14 @@ final class PeerSelf : Peer
         foreach(JSONValue j; json.array)
         {
             PeerOther po            = new PeerOther(j["id"].str);
-            po.natInfo.natType        = cast(NATType)(cast(int)(j["t"].integer));
-            po.natInfo.externalIp    = j["ei"].str;
-            po.natInfo.externalPort    = cast(ushort)(j["ep"].integer);
-            po.natInfo.localIp        = j["li"].str;
+            po.natInfo.natType      = cast(NATType)(cast(int)(j["t"].integer));
+            po.natInfo.externalIp   = j["ei"].str;
+            po.natInfo.externalPort = cast(ushort)(j["ep"].integer);
+            po.natInfo.localIp      = j["li"].str;
             po.natInfo.localPort    = cast(ushort)(j["lp"].integer);
             po.discoveryTime        = j["dt"].integer;
             po.lastHeartbeat        = j["ht"].integer;
-            po.tryConnectTimes        = cast(int)(j["tt"].integer);
+            po.tryConnectTimes      = cast(int)(j["tt"].integer);
 
             peers[po.peerId]        = po;
         }
