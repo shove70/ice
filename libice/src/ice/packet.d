@@ -11,14 +11,14 @@ import ice.utils, ice.natinfo, ice.peerother;
 
 enum Cmd
 {
-    ReportPeerInfo                = 1,
-    RequestAllPeers                = 2,    
-    PostMessageDirect            = 3,
-    PostMessageForward            = 4,
-    RequestMakeHoleDirect        = 5,
-    RequestMakeHoleForward        = 6,
-    ResponseMakeHole            = 7,
-    Heartbeat                    = 8
+    ReportPeerInfo           = 1,
+    RequestAllPeers          = 2,    
+    PostMessageDirect        = 3,
+    PostMessageForward       = 4,
+    RequestMakeHoleDirect    = 5,
+    RequestMakeHoleForward   = 6,
+    ResponseMakeHole         = 7,
+    Heartbeat                = 8
 }
 
 /**
