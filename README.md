@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/shove70/ice.svg?branch=master)](https://travis-ci.org/shove70/ice)
+
 # NAT, stun, turn and ice.
 
 ### Quick Start:
