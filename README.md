@@ -7,18 +7,18 @@
 
 1: Start the Server.
 ```
-	$ cd .../ice/server
-	$ dub run
+$ cd .../ice/server
+$ dub run
 ```
 2: Start first client.
 ```
-	$ cd .../ice/examples/client
-	$ dub run
+$ cd .../ice/examples/client
+$ dub run
 ```
 3: Start second client. (Reopen a terminal)
 ```
-	$ cd .../ice/examples/client
-	$ dub run
+$ cd .../ice/examples/client
+$ dub run
 ```
 
 4: In the two client, follow the prompts to enter "menu" or other content.

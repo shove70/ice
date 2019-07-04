@@ -1,0 +1,7 @@
+/.project
+/.dub/
+/dub.selections.json
+/libice.a
+/ice.lib
+/docments/
+/ice-tracker

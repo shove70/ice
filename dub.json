@@ -1,18 +1,18 @@
 {
-	"authors": ["Shove"],
-	"name" : "ice",
-	"description" : "NAT, stun, turn and ice.",
-	"license": "MIT License",
-	"copyright": "Copyright © 2018, Shove",
-	"targetType": "library",
-	"targetName": "ice",
-	"importPaths": [
-		"libice/src"
-	],
+    "authors": ["Shove"],
+    "name": "ice",
+    "description": "NAT, stun, turn and ice.",
+    "license": "MIT License",
+    "copyright": "Copyright © 2018, Shove",
+    "targetType": "library",
+    "targetName": "ice",
+    "importPaths": [
+        "libice/src"
+    ],
     "sourcePaths": [
-		"libice/src"
-	],
-	"dependencies" : {
-		"crypto": "~>0.2.4"
-	}
+        "libice/src"
+    ],
+    "dependencies": {
+        "crypto": "~>0.2.4"
+    }
 }
