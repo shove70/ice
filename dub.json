@@ -3,7 +3,7 @@
     "name": "ice",
     "description": "NAT, stun, turn and ice.",
     "license": "MIT License",
-    "copyright": "Copyright © 2018, Shove",
+    "copyright": "Copyright © 2017-2020, Shove",
     "targetType": "library",
     "targetName": "ice",
     "importPaths": [
@@ -13,6 +13,6 @@
         "libice/src"
     ],
     "dependencies": {
-        "crypto": "~>0.2.14"
+        "crypto": "*"
     }
 }
